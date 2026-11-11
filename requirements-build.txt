@@ -1,0 +1,6 @@
+ollama
+pyttsx3
+pyautogui
+pyperclip
+pyinstaller
+comtypes
