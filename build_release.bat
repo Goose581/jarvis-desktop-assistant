@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 REM Keep this version in sync with APP_VERSION in JARVIS.py.
-set "APP_VERSION=1.6.0"
+set "APP_VERSION=1.6.2"
 set "PYTHON=.venv\Scripts\python.exe"
 set "BUILD_LOG=%~dp0build.log"
 set "BUILD_STAGE=initial checks"
@@ -74,7 +74,7 @@ if exist JARVIS-Launcher.spec del /q JARVIS-Launcher.spec
 echo.
 echo [5/6] Building the J.A.R.V.I.S. desktop application...
 set "BUILD_STAGE=desktop application packaging"
-call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import pyttsx3.drivers.sapi5 JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
+call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import winsound --hidden-import pyttsx3.drivers.sapi5 --add-data "assets\jarvis_timer_alarm.wav;assets" JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
 if errorlevel 1 goto :failed
 
 if not exist "dist\JARVIS\JARVIS.exe" (
@@ -87,7 +87,7 @@ if not exist "dist\JARVIS\JARVIS.exe" (
 echo.
 echo [6/6] Building updater and release assets...
 set "BUILD_STAGE=updater packaging"
-call "%PYTHON%" -m PyInstaller --noconfirm --clean --onefile --windowed --name JARVIS-Launcher --runtime-hook pyi_rth_stdio.py launcher.py >>"%BUILD_LOG%" 2>&1
+call "%PYTHON%" -m PyInstaller --noconfirm --clean --onefile --windowed --name JARVIS-Launcher --runtime-hook pyi_rth_stdio.py --hidden-import tkinter --hidden-import tkinter.ttk launcher.py >>"%BUILD_LOG%" 2>&1
 if errorlevel 1 goto :failed
 
 if not exist "dist\JARVIS-Launcher.exe" (

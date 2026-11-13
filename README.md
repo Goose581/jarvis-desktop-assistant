@@ -1,3 +1,14 @@
+## v1.6.2 — User-approved startup updates
+
+The launcher checks GitHub Releases before opening the main J.A.R.V.I.S. window. When a newer release with both required assets is available, a branded blue/turquoise startup dialog displays the version and release notes. The user must choose **Install update** before anything is downloaded or installed. **Not now** (or closing the dialog) launches the currently installed version without changing it; the update is offered again next launch. After consent, a progress window downloads the app ZIP and SHA-256 file, verifies the checksum, and hands off to the existing safe updater/rollback flow. If GitHub is offline or the prompt cannot open, the current version launches and the reason is logged. The v1.6.2 installer must be run once over an existing v1.6.1 installation to replace the older launcher; later application updates can then use the prompted in-app startup flow.
+When ready, create a GitHub Release and set the tag and title to `v1.6.2`. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for updates, plus `output\JARVIS-Setup.exe` for first-time installs and the one-time launcher upgrade.
+
+## v1.6.1 — Custom 10-second timer alarm
+
+Timer completion plays a distinct J.A.R.V.I.S. alarm sound for exactly ten seconds. It is a bundled WAV file, not the Windows notification sound. The alarm plays asynchronously; the spoken completion message follows after the sound finishes. Assistant Settings offers a sound toggle, **Test 10-second alarm**, and **Stop sound** controls. The WAV is bundled into the app and update ZIP, so no extra audio library or separate download is needed.
+
+When ready, create a GitHub Release and set the tag and title to `v1.6.1`.
+
 ## v1.6.0 — All-in-One Edition and AI Model Manager
 
 When ready, create a GitHub Release and set the tag and title to `v1.6.0`.
@@ -10,7 +21,7 @@ Open **AI model manager** from the left navigation rail or Assistant Settings to
 
 ## v1.5.1 — Faster timers and completion chime
 
-Timers use monotonic deadlines and play a Windows system notification sound immediately when they finish, before any queued voice response. The sound is enabled by default and can be switched off or tested in Assistant Settings → Timer sound.
+Timers use monotonic deadlines and play a bundled custom J.A.R.V.I.S. alarm WAV for exactly ten seconds when they finish. It is not the Windows notification sound. Spoken completion is announced after the alarm; the sound can be switched off, tested or stopped in Assistant Settings → Timer sound.
 
 ## v1.5.0 — Switchable themes
 
@@ -33,7 +44,7 @@ The desktop interface now supports six switchable palettes (Midnight Blue, Arcti
 - Model-aware Ollama thinking control: uses the model's advertised `false` or `low` setting when `/api/show` exposes one, and caches that capability for 30 minutes.
 - Shorter response budgets and a smaller recent-history window to reduce unnecessary generation and prompt work on older PCs.
 - The default model remains `gemma4:e2b` with an 8,192-token context; custom model and context settings are preserved.
-- Deterministic BIDMAS calculator, web search, app launch/close, notes, timers, folder opening and typing tools. Timer completion plays an immediate Windows system notification sound by default; toggle or test it in Assistant Settings. Timer deadlines use `time.monotonic()` so short timers are not extended by startup bookkeeping.
+- Deterministic BIDMAS calculator, web search, app launch/close, notes, timers, folder opening and typing tools. Timer completion plays the bundled custom ten-second alarm by default; toggle, test or stop it in Assistant Settings. Timer deadlines use `time.monotonic()` so short timers are not extended by startup bookkeeping.
 - Explicit JSON schemas for Ollama tools, avoiding the Python 3.14/Pydantic callable-annotation error.
 - Resilient Ollama local connection discovery through localhost/IPv4/IPv6 and proxy bypass for loopback.
 - Custom midnight-blue and turquoise Command Centre GUI, settings, voice switch, conversation export, copy support and updater.

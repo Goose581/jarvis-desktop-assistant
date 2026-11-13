@@ -1260,16 +1260,24 @@ class JarvisApp:
         timer_sound_row = tk.Frame(dialog, bg=BG)
         timer_sound_row.pack(fill="x", padx=18, pady=(0, 14))
         tk.Checkbutton(
-            timer_sound_row, text="Play a sound when a timer finishes",
+            timer_sound_row, text="Play a custom 10-second alarm when a timer finishes",
             variable=timer_sound_var, bg=BG, fg=TEXT, activebackground=BG,
             activeforeground=TEXT, selectcolor=PANEL, font=("Segoe UI", 9),
             relief="flat", highlightthickness=0,
         ).pack(side="left", anchor="w")
+        timer_sound_actions = tk.Frame(dialog, bg=BG)
+        timer_sound_actions.pack(fill="x", padx=18, pady=(0, 14))
         tk.Button(
-            timer_sound_row, text="Test sound", command=lambda: assistant.play_timer_sound(force=True),
+            timer_sound_actions, text="Test 10-second alarm",
+            command=lambda: assistant.play_timer_sound(force=True),
             bg=PANEL_LIGHT, fg=TEXT, activebackground=BORDER, relief="flat",
             padx=10, pady=5, cursor="hand2",
-        ).pack(side="right")
+        ).pack(side="left")
+        tk.Button(
+            timer_sound_actions, text="Stop sound", command=assistant.stop_timer_sound,
+            bg=PANEL_LIGHT, fg=TEXT, activebackground=BORDER, relief="flat",
+            padx=10, pady=5, cursor="hand2",
+        ).pack(side="left", padx=(8, 0))
 
         def save_and_close() -> None:
             try:

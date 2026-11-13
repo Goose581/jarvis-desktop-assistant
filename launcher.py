@@ -10,6 +10,9 @@ import ctypes
 import hashlib
 import json
 import os
+import threading
+import tkinter as tk
+from tkinter import ttk
 import re
 import shutil
 import stat
@@ -19,6 +22,7 @@ import tempfile
 import time
 import unicodedata
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -26,7 +30,7 @@ from pathlib import Path
 APP_EXE_NAME = "JARVIS.exe"
 RELEASE_ZIP_NAME = "JARVIS-Windows.zip"
 CHECKSUM_NAME = RELEASE_ZIP_NAME + ".sha256"
-USER_AGENT = "JARVIS-Windows-Updater/1.6.0"
+USER_AGENT = "JARVIS-Windows-Updater/1.6.2"
 MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 MAX_ARCHIVE_FILES = 20000
 MAX_EXTRACTED_BYTES = 500 * 1024 * 1024
@@ -194,19 +198,52 @@ def find_asset(release: dict, name: str) -> str:
     raise ValueError(f"Release is missing required asset: {name}")
 
 
-def check_and_download_update(root: Path, app_dir: Path, repo: str) -> Path | None:
+def check_for_update(app_dir: Path, repo: str) -> dict | None:
+    """Return validated release metadata when a newer installable release exists.
+
+    This function never downloads anything. The user is always asked before
+    the update ZIP and checksum are fetched.
+    """
     release = latest_release(repo)
     new_version = str(release.get("tag_name", "")).strip().lstrip("vV")
     old_version = current_version(app_dir)
 
     if not re.fullmatch(r"\d+(?:\.\d+){0,3}", new_version):
-        raise ValueError("The latest GitHub release tag must be a numeric version such as v1.1.0.")
+        raise ValueError("The latest GitHub release tag must be a numeric version such as v1.6.2.")
     if version_tuple(new_version) <= version_tuple(old_version):
         log(f"No update available. Installed={old_version}, latest={new_version}")
         return None
 
+    # Validate that both required assets exist before offering the update.
     zip_url = find_asset(release, RELEASE_ZIP_NAME)
     checksum_url = find_asset(release, CHECKSUM_NAME)
+    body = release.get("body", "")
+    if not isinstance(body, str):
+        body = ""
+    name = release.get("name")
+    if not isinstance(name, str) or not name.strip():
+        name = f"J.A.R.V.I.S. v{new_version}"
+
+    log(f"Update available. Installed={old_version}, latest={new_version}")
+    return {
+        "version": new_version,
+        "current_version": old_version,
+        "name": name,
+        "body": body,
+        "html_url": release.get("html_url", ""),
+        "zip_url": zip_url,
+        "checksum_url": checksum_url,
+    }
+
+
+def download_available_update(update: dict) -> Path:
+    """Download and verify the two assets for a release the user accepted."""
+    if not isinstance(update, dict):
+        raise ValueError("Invalid update information.")
+    zip_url = update.get("zip_url")
+    checksum_url = update.get("checksum_url")
+    if not isinstance(zip_url, str) or not isinstance(checksum_url, str):
+        raise ValueError("The selected release is missing update download URLs.")
 
     update_base = os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()
     update_dir = Path(update_base) / "JARVIS" / "updates"
@@ -216,7 +253,7 @@ def check_and_download_update(root: Path, app_dir: Path, repo: str) -> Path | No
     zip_path.unlink(missing_ok=True)
     checksum_path.unlink(missing_ok=True)
 
-    log(f"Downloading update {old_version} -> {new_version}")
+    log(f"Downloading accepted update {update.get('current_version', '?')} -> {update.get('version', '?')}")
     download(zip_url, zip_path)
     download(checksum_url, checksum_path, max_bytes=1024 * 1024)
 
@@ -229,7 +266,190 @@ def check_and_download_update(root: Path, app_dir: Path, repo: str) -> Path | No
         zip_path.unlink(missing_ok=True)
         raise ValueError("Update verification failed: SHA-256 checksum did not match.")
 
+    checksum_path.unlink(missing_ok=True)
     return zip_path
+
+
+def _clean_release_notes(value: str, limit: int = 1800) -> str:
+    """Make release markdown safe and compact for a plain-text startup dialog."""
+    text = re.sub(r"<[^>]*>", " ", value or "")
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
+    text = re.sub(r"^\s{0,3}#{1,6}\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\r\n?", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if len(text) > limit:
+        text = text[:limit].rsplit("\n", 1)[0].rstrip() + "\n\n(Release notes shortened.)"
+    return text or "Bug fixes, improvements and new features."
+
+
+def _center_window(window: tk.Tk, width: int, height: int) -> None:
+    window.update_idletasks()
+    x = max(0, (window.winfo_screenwidth() - width) // 2)
+    y = max(0, (window.winfo_screenheight() - height) // 2)
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
+
+def _create_startup_window(title: str, width: int, height: int) -> tk.Tk:
+    window = tk.Tk()
+    window.title(title)
+    window.configure(bg="#071426")
+    window.resizable(False, False)
+    try:
+        window.attributes("-topmost", True)
+    except tk.TclError:
+        pass
+    _center_window(window, width, height)
+    return window
+
+
+def prompt_for_update(current: str, update: dict) -> bool:
+    """Show a branded startup prompt and return True only when user accepts."""
+    version = str(update.get("version", "unknown"))
+    title = str(update.get("name") or f"J.A.R.V.I.S. v{version}")
+    notes = _clean_release_notes(str(update.get("body", "")))
+    accepted = {"value": False}
+
+    try:
+        window = _create_startup_window("J.A.R.V.I.S. — Update available", 600, 500)
+        window.protocol("WM_DELETE_WINDOW", window.destroy)
+
+        outer = tk.Frame(window, bg="#071426", padx=26, pady=22)
+        outer.pack(fill="both", expand=True)
+
+        brand = tk.Frame(outer, bg="#071426")
+        brand.pack(fill="x")
+        tk.Label(brand, text="J.A.R.V.I.S.", bg="#071426", fg="#EAF7FF",
+                 font=("Segoe UI", 19, "bold")).pack(side="left")
+        tk.Label(brand, text="SOFTWARE UPDATE", bg="#12364A", fg="#42E6D4",
+                 font=("Segoe UI", 9, "bold"), padx=11, pady=6).pack(side="right")
+
+        tk.Frame(outer, bg="#28DCCB", height=2).pack(fill="x", pady=(16, 20))
+        tk.Label(outer, text="A new version is ready", bg="#071426", fg="#F1FAFF",
+                 font=("Segoe UI", 21, "bold"), anchor="w").pack(fill="x")
+        tk.Label(outer, text=f"{title}  ·  v{current}  →  v{version}", bg="#071426",
+                 fg="#85A9C2", font=("Segoe UI", 10), anchor="w").pack(fill="x", pady=(7, 14))
+
+        notes_frame = tk.Frame(outer, bg="#10253A", padx=14, pady=12)
+        notes_frame.pack(fill="both", expand=True)
+        tk.Label(notes_frame, text="WHAT'S NEW", bg="#10253A", fg="#42E6D4",
+                 font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", pady=(0, 8))
+        notes_box = tk.Text(notes_frame, height=9, wrap="word", bg="#10253A", fg="#DCEAF4",
+                            insertbackground="#42E6D4", relief="flat", borderwidth=0,
+                            font=("Segoe UI", 9), padx=0, pady=0)
+        notes_box.pack(fill="both", expand=True)
+        notes_box.insert("1.0", notes)
+        notes_box.configure(state="disabled")
+
+        footer = tk.Frame(outer, bg="#071426")
+        footer.pack(fill="x", pady=(18, 0))
+        tk.Label(footer, text="You can install now or skip this update and continue.",
+                 bg="#071426", fg="#7796AC", font=("Segoe UI", 8)).pack(side="left")
+
+        buttons = tk.Frame(outer, bg="#071426")
+        buttons.pack(fill="x", pady=(18, 0))
+
+        def skip() -> None:
+            accepted["value"] = False
+            window.destroy()
+
+        def install() -> None:
+            accepted["value"] = True
+            window.destroy()
+
+        tk.Button(buttons, text="Not now", command=skip, bg="#142A40", fg="#D7E7F1",
+                  activebackground="#1D3B55", activeforeground="#FFFFFF", relief="flat",
+                  bd=0, padx=22, pady=11, cursor="hand2", font=("Segoe UI", 9, "bold")).pack(side="right")
+        tk.Button(buttons, text="Install update", command=install, bg="#21BFB6", fg="#04151E",
+                  activebackground="#42E6D4", activeforeground="#04151E", relief="flat",
+                  bd=0, padx=22, pady=11, cursor="hand2", font=("Segoe UI", 9, "bold")).pack(side="right", padx=(0, 10))
+
+        try:
+            window.attributes("-topmost", True)
+            window.focus_force()
+        except tk.TclError:
+            pass
+        window.mainloop()
+        return accepted["value"]
+    except Exception as error:
+        log(f"Could not display graphical update prompt: {type(error).__name__}: {error}")
+        # On Windows, retain the explicit opt-in requirement even if Tk cannot start.
+        try:
+            result = ctypes.windll.user32.MessageBoxW(
+                None,
+                f"J.A.R.V.I.S. v{version} is available.\n\n"
+                f"You are using v{current}.\n\nInstall the update now?",
+                "J.A.R.V.I.S. Update Available",
+                0x00000004 | 0x00000040 | 0x00000100,  # YES/NO, information, default NO
+            )
+            return result == 6
+        except Exception:
+            log("No graphical or native update prompt was available; update was skipped safely.")
+            return False
+
+
+def show_download_progress(update: dict, download_function=None) -> Path:
+    """Keep the startup experience visible while downloading/verifying an accepted update."""
+    if download_function is None:
+        download_function = download_available_update
+    version = str(update.get("version", "unknown"))
+    result: dict[str, object] = {"path": None, "error": None, "finished": False}
+    try:
+        window = _create_startup_window("J.A.R.V.I.S. — Installing update", 470, 230)
+        window.protocol("WM_DELETE_WINDOW", lambda: None)
+        outer = tk.Frame(window, bg="#071426", padx=28, pady=25)
+        outer.pack(fill="both", expand=True)
+        tk.Label(outer, text="J.A.R.V.I.S.", bg="#071426", fg="#42E6D4",
+                 font=("Segoe UI", 17, "bold")).pack(anchor="w")
+        tk.Label(outer, text=f"Downloading and verifying v{version}…", bg="#071426", fg="#F1FAFF",
+                 font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(18, 6))
+        tk.Label(outer, text="Please keep this window open. Your current version is still safe.",
+                 bg="#071426", fg="#85A9C2", font=("Segoe UI", 9)).pack(anchor="w")
+        progress = ttk.Progressbar(outer, mode="indeterminate", length=400)
+        progress.pack(fill="x", pady=(22, 0))
+        progress.start(12)
+
+        def worker() -> None:
+            try:
+                result["path"] = download_function(update)
+            except Exception as error:
+                result["error"] = error
+            finally:
+                result["finished"] = True
+
+        threading.Thread(target=worker, name="JARVIS-update-download", daemon=True).start()
+
+        def poll() -> None:
+            if result["finished"]:
+                progress.stop()
+                window.destroy()
+            else:
+                window.after(100, poll)
+
+        window.after(100, poll)
+        window.mainloop()
+    except Exception as error:
+        log(f"Update progress window failed: {type(error).__name__}: {error}")
+        # The update is still explicitly user-approved, so a no-window fallback is safe.
+        result["path"] = download_function(update)
+
+    if result["error"] is not None:
+        raise result["error"]  # type: ignore[misc]
+    path = result["path"]
+    if not isinstance(path, Path):
+        raise RuntimeError("The update download did not produce a package path.")
+    return path
+
+
+def check_and_download_update(root: Path, app_dir: Path, repo: str) -> Path | None:
+    """Compatibility helper: detect, prompt, then download only after consent."""
+    update = check_for_update(app_dir, repo)
+    if update is None:
+        return None
+    if not prompt_for_update(current_version(app_dir), update):
+        log(f"User skipped update v{update['version']} for this launch.")
+        return None
+    return show_download_progress(update)
 
 
 def wait_for_parent_exit(pid: int) -> None:
@@ -484,20 +704,28 @@ def main() -> int:
     try:
         config = load_config(root)
         repo = str(config.get("github_repo", "")).strip()
-        zip_path = check_and_download_update(root, app_dir, repo)
-        if zip_path is not None:
-            if getattr(sys, "frozen", False):
-                helper_command = [sys.executable, "--apply-update", str(zip_path), str(app_dir), str(os.getpid())]
-            else:
-                helper_command = [sys.executable, str(Path(__file__).resolve()), "--apply-update", str(zip_path), str(app_dir), str(os.getpid())]
+        update = check_for_update(app_dir, repo)
+        if update is not None:
+            log(f"Showing startup update prompt for v{update['version']}.")
+            if prompt_for_update(current_version(app_dir), update):
+                zip_path = show_download_progress(update)
+                if getattr(sys, "frozen", False):
+                    helper_command = [sys.executable, "--apply-update", str(zip_path), str(app_dir), str(os.getpid())]
+                else:
+                    helper_command = [sys.executable, str(Path(__file__).resolve()), "--apply-update", str(zip_path), str(app_dir), str(os.getpid())]
 
-            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            subprocess.Popen(helper_command, creationflags=flags)
-            return 0
+                flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                subprocess.Popen(helper_command, creationflags=flags)
+                return 0
+            log(f"User chose Not now for update v{update['version']}.")
     except Exception as error:
-        # An update service outage or malformed release must not prevent the
-        # already-installed assistant from starting. The reason is preserved in the log.
-        log(f"Update check skipped: {type(error).__name__}: {error}")
+        # A network outage or cancelled/invalid update must never prevent the
+        # currently installed assistant from starting.
+        log(f"Update check/install skipped: {type(error).__name__}: {error}")
+        try:
+            show_error("J.A.R.V.I.S. update", f"The update could not be completed. Your current version will start.\n\n{error}")
+        except Exception:
+            pass
 
     launch_app(app_dir)
     return 0

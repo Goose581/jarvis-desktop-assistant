@@ -1,3 +1,39 @@
+# Code audit — v1.6.2 startup update consent
+
+- Startup now checks GitHub Releases before launching the main app. It only offers a release whose numeric tag is newer and whose update ZIP and SHA-256 assets both exist.
+- A branded blue/turquoise Tkinter startup window shows the current/new version and bounded, sanitised release notes. **Install update** is the only path that begins downloads. **Not now** or closing the window starts the current app and leaves the install untouched.
+- After explicit consent, a separate progress window stays visible while the ZIP and checksum download and verify. Only after checksum validation does the existing helper process stage and swap the application directory.
+- Existing safeguards are retained: HTTPS-only URLs, bounded downloads, SHA-256 verification, unsafe ZIP path rejection, backup/rollback, interrupted-update recovery, and fail-open launch if GitHub is unavailable.
+- The launcher explicitly imports `urllib.parse` and Tkinter, and the PyInstaller launcher command includes Tkinter hidden imports so the startup dialog is bundled.
+- **Upgrade note:** the launcher executable is installed outside the replaceable app folder. Existing v1.6.1 users must run the v1.6.2 `JARVIS-Setup.exe` once to install the prompt-capable launcher. Future app-only update ZIPs can then be prompted for at startup.
+
+## Verification
+
+- Full automated suite: 1,472 tests passed.
+- GUI prompt smoke test under Xvfb: Install update, Not now, and download progress windows all completed successfully.
+- Version metadata checks keep `JARVIS.py`, launcher user agent, build script, installer and README aligned at v1.6.2.
+- Real GitHub startup prompt, Windows frozen-launcher behaviour and Inno Setup compilation still require a Windows test after building.
+
+---
+
+# Code audit — v1.6.1
+
+## Timer alarm update
+
+- Replaced `winsound.MessageBeep` (the Windows notification sound) with a unique bundled `assets/jarvis_timer_alarm.wav` audio file.
+- The WAV uses uncompressed 16-bit mono PCM at 22,050 Hz and is exactly 10.0 seconds long. The same audio is repeated as a short five-note electronic motif; it is not the Windows system notification sound.
+- `winsound.PlaySound` uses `SND_FILENAME | SND_ASYNC | SND_NODEFAULT`, so playback does not block the timer thread or GUI.
+- The spoken timer-completion announcement is scheduled after ten seconds when playback starts successfully; if sound is disabled or unavailable, the voice announcement is immediate.
+- Added `stop_timer_sound()` and a Stop sound button to Assistant Settings.
+- PyInstaller explicitly bundles the WAV under `assets/` and includes `winsound`; the update ZIP and Inno Setup installer inherit the bundled asset through the existing recursive package steps.
+- No external Python audio dependency is needed.
+
+## Verification
+
+- Added tests to verify the WAV's exact ten-second duration, mono/16-bit format, bundled file path, asynchronous playback flags, absence of `MessageBeep`, stop operation, sound preference behaviour, delayed voice announcement and packaging inclusion.
+- Python syntax, full unit tests and GUI smoke tests are run by the build workflow.
+- Actual sound output and audible duration still need confirmation on Windows 11 with the user's speakers/headphones.
+
 # Code audit — v1.6.0 All-in-One Edition
 
 ## Single-file first-time installer

@@ -1,3 +1,30 @@
+# v1.6.2 release checklist — startup update consent
+
+- [ ] Build on Windows and confirm all automated tests pass.
+- [ ] Install v1.6.2 over v1.6.1 once so the new outer launcher is installed.
+- [ ] Publish a newer test release (for example v1.6.3) with both `JARVIS-Windows.zip` and `.sha256` assets.
+- [ ] Launch from the Start Menu/Desktop shortcut and verify the branded update prompt appears before the main GUI.
+- [ ] Choose **Not now**; verify the current version launches and no update ZIP/checksum is downloaded.
+- [ ] Launch again and choose **Install update**; verify download progress, SHA-256 validation, update handoff and new app version.
+- [ ] Test closing the prompt; it must behave like **Not now**.
+- [ ] Test offline GitHub access; current installed app must still launch.
+- [ ] Confirm the prompt is not shown when installed version is already latest.
+- [ ] Only publish after the Windows tests pass.
+
+# v1.6.1 release checklist — custom timer alarm
+
+- [ ] Run `build_release.bat` on Windows and confirm all tests pass.
+- [ ] Confirm `assets\jarvis_timer_alarm.wav` is included in `dist\JARVIS\_internal\assets` or the PyInstaller app asset folder for the installed version.
+- [ ] Confirm `JARVIS-Windows.zip` contains `assets/jarvis_timer_alarm.wav` and its checksum verifies.
+- [ ] Install `output\JARVIS-Setup.exe` over the previous release.
+- [ ] In Assistant Settings, click **Test 10-second alarm** and confirm it plays the distinct custom tone for ten seconds.
+- [ ] Click **Stop sound** during the preview and confirm playback stops.
+- [ ] Set a short timer and confirm the custom alarm starts at expiry and continues for ten seconds.
+- [ ] Confirm the spoken completion message starts after the custom alarm ends, not over it.
+- [ ] Disable timer sounds and confirm the spoken completion message is immediate and no audio plays.
+- [ ] Confirm an unavailable/missing audio asset is logged and does not prevent timer completion.
+- [ ] Only after Windows audio and installer checks pass, publish GitHub Release tag `v1.6.1` with the update ZIP/checksum and installer.
+
 # v1.6.0 release checklist — All-in-One edition
 
 - [ ] Run `build_release.bat` on 64-bit Windows with Python 3.10+ and Inno Setup 6 available.

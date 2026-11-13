@@ -1,22 +1,8 @@
-J.A.R.V.I.S. v1.6.0 — All-in-One installer and AI Model Manager
+J.A.R.V.I.S. v1.6.2 — Test results
 
-Automated test command:
-  python -m unittest discover -s tests -v
+Automated unit tests: 1,472 passed, 0 failures, 0 errors.
+Python compileall: passed for application, launcher, workspace, model manager, runtime hook and tests.
+Startup update prompt GUI smoke (Xvfb): passed — Install update button returned True; Not now returned False; download progress window closed after a successful mocked download.
+Updater flow regression tests: passed — same/older releases do not offer an update; newer release metadata is validated; missing assets and invalid tags are rejected; no download occurs before consent; Not now launches the current app; Install update downloads then starts the helper; no-update and offline paths still launch the current app.
 
-Result:
-  Ran 1455 tests
-  OK
-
-Additional checks:
-  - Python compileall passed for all application, helper, updater and test modules.
-  - Model tag validation, listing metadata, streamed pull progress, server error handling, incomplete-stream verification and model deletion tests passed.
-  - Release version synchronisation and single-file installer source/signature checks passed.
-  - GUI Model Manager smoke test under Xvfb passed: main app/window opened, mocked installed model was populated, events were processed, and the app closed cleanly.
-
-Target-PC checks still required:
-  - Run build_release.bat on Windows with Inno Setup 6 and internet access.
-  - Confirm download_ollama.ps1 verifies the real current Ollama Authenticode signature.
-  - Confirm output\JARVIS-Setup.exe is produced and installs Ollama only when needed.
-  - Confirm a clean Windows account can download a chosen model using AI Model Manager.
-  - Confirm a pre-existing Ollama installation and its model store are preserved.
-  - Test selected-model chat, six themes, Workspace tools, voice, clipboard and timer audio on the target PC.
+Not tested in this environment: Windows PyInstaller frozen EXE packaging, Inno Setup compilation, Windows desktop shortcut behaviour, actual GitHub release prompt against the live repository, and full update execution on the user's Windows PC.

@@ -218,10 +218,19 @@ class GuiThemeTests(unittest.TestCase):
 class TimerSoundGuiTests(unittest.TestCase):
     def test_settings_include_timer_sound_toggle_and_test_button(self):
         source = (PROJECT_ROOT / "JARVIS_GUI.py").read_text(encoding="utf-8")
-        self.assertIn('text="Play a sound when a timer finishes"', source)
-        self.assertIn('text="Test sound"', source)
+        self.assertIn('text="Play a custom 10-second alarm when a timer finishes"', source)
+        self.assertIn('text="Test 10-second alarm"', source)
+        self.assertIn('text="Stop sound"', source)
+        self.assertIn('command=assistant.stop_timer_sound', source)
         self.assertIn('timer_sound_enabled=timer_sound_var.get()', source)
         self.assertIn('assistant.play_timer_sound(force=True)', source)
+
+    def test_build_bundles_the_custom_ten_second_alarm_asset(self):
+        build = (PROJECT_ROOT / "build_release.bat").read_text(encoding="utf-8")
+        asset = PROJECT_ROOT / "assets" / "jarvis_timer_alarm.wav"
+        self.assertTrue(asset.is_file())
+        self.assertIn('--add-data "assets\\jarvis_timer_alarm.wav;assets"', build)
+        self.assertIn("--hidden-import winsound", build)
 
 
 class AllInOneInstallerTests(unittest.TestCase):

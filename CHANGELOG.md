@@ -1,3 +1,26 @@
+## v1.6.2 — Ask before installing startup updates
+
+- Replaced silent startup updates with a branded J.A.R.V.I.S. update prompt before the main interface opens.
+- The prompt shows the installed version, available version and a cleaned, bounded excerpt of the GitHub release notes.
+- Added **Install update** and **Not now** choices. Closing the prompt is treated as declining; no update files are downloaded unless the user explicitly accepts.
+- Added a branded download/verification window after consent. The existing HTTPS validation, SHA-256 verification, safe ZIP extraction, backup/rollback and helper-process handoff remain in use.
+- If the release check fails or the update is declined, the currently installed application still launches.
+- Added explicit `urllib.parse` import and explicit Tkinter build imports for the windowed launcher.
+- Existing v1.6.1 users must run the v1.6.2 installer once to replace the old outer launcher; subsequent updates are prompted at startup.
+
+### Verification
+- Added regression tests for newer/same/older release handling, missing assets, no download before consent, skip behaviour, accepted update handoff, and fail-open behaviour.
+- Run the full Windows build and GUI checks on the target PC before publishing.
+
+## v1.6.1 — Custom 10-second timer alarm
+
+- Replaced the Windows system notification sound with a distinctive, bundled J.A.R.V.I.S. electronic alarm WAV.
+- The custom alarm audio is exactly 10.0 seconds long and plays asynchronously, so the timer callback and GUI remain responsive.
+- Timer completion speech is announced after the alarm finishes, avoiding speech/audio overlap. If audio cannot start or is disabled, the voice announcement still happens immediately.
+- Added a Stop sound control beside the 10-second alarm preview in Assistant Settings.
+- Bundled the alarm WAV into the PyInstaller app so it is included in the installer and automatic-update ZIP. No external audio package is required.
+- Added tests for WAV duration/format, async playback flags, stop behaviour, disabled-sound behaviour, delayed voice announcement, and packaging inclusion.
+
 ## v1.6.0 — All-in-One Windows setup and AI Model Manager
 
 - The first-time `JARVIS-Setup.exe` now embeds the official Ollama Windows installer. The build script downloads it from `https://ollama.com/download/OllamaSetup.exe` and verifies its Authenticode signature and Ollama Inc. publisher before bundling.

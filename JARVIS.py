@@ -34,7 +34,7 @@ from typing import Any
 import jarvis_workspace as workspace
 
 APP_NAME = "J.A.R.V.I.S."
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.2"
 # Recommended lightweight model for J.A.R.V.I.S. on the user's 16 GB DDR3 PC.
 DEFAULT_MODEL = "gemma4:e2b"
 LEGACY_DEFAULT_MODELS = {"llama3.2:1b"}
@@ -52,6 +52,16 @@ _OLLAMA_THINK_CACHE_SECONDS = 1800
 MAX_HISTORY_MESSAGES = 18  # keep recent context compact on older PCs
 MAX_INPUT_LENGTH = 5000
 MAX_MATH_LENGTH = 250
+
+
+TIMER_SOUND_DURATION_SECONDS = 10.0
+TIMER_SOUND_RELATIVE_PATH = Path("assets") / "jarvis_timer_alarm.wav"
+
+
+def resource_path(relative_path: str | Path) -> Path:
+    """Resolve a bundled asset in source runs and PyInstaller one-folder builds."""
+    bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return bundle_root / relative_path
 
 
 # ==========================================
@@ -918,7 +928,7 @@ MAX_ACTIVE_TIMERS = 25
 
 
 def set_timer_sound_enabled(enabled: bool, *, persist: bool = True) -> None:
-    """Enable/disable the Windows timer-completion chime."""
+    """Enable/disable the custom ten-second timer alarm."""
     global timer_sound_enabled
     if not isinstance(enabled, bool):
         raise ValueError("timer_sound_enabled must be a boolean.")
@@ -931,26 +941,38 @@ def set_timer_sound_enabled(enabled: bool, *, persist: bool = True) -> None:
 
 
 def play_timer_sound(*, force: bool = False) -> bool:
-    """Play a short system notification as soon as a timer completes.
+    """Play J.A.R.V.I.S.'s bundled custom alarm WAV asynchronously for ten seconds.
 
-    On Windows, MessageBeep uses the user's configured system sound and
-    returns immediately. A console bell is a best-effort fallback elsewhere.
+    This deliberately uses a packaged audio file with winsound.PlaySound; it
+    never calls MessageBeep and never uses the user's Windows notification tone.
     """
     if not force and not timer_sound_enabled:
         return False
     try:
         import winsound  # Windows standard library; imported only when needed.
 
-        # MessageBeep is asynchronous and avoids delaying the timer callback.
-        result = winsound.MessageBeep(getattr(winsound, "MB_ICONASTERISK", -1))
-        return result is not False
+        sound_path = resource_path(TIMER_SOUND_RELATIVE_PATH)
+        if not sound_path.is_file():
+            raise FileNotFoundError(f"The bundled timer alarm is missing: {sound_path}")
+        flags = winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT
+        # The WAV itself is exactly ten seconds long. Async playback keeps the
+        # timer callback and the GUI responsive while the custom alarm plays.
+        winsound.PlaySound(str(sound_path), flags)
+        return True
     except Exception as error:
-        # Keep timer completion reliable even on systems without audio support.
-        try:
-            _safe_console_message("\a")
-        except Exception:
-            pass
-        log_error("The timer notification sound could not be played.", error)
+        # Do not fall back to MessageBeep: the user explicitly chose a custom tone.
+        log_error("The custom J.A.R.V.I.S. timer alarm could not be played.", error)
+        return False
+
+
+def stop_timer_sound() -> bool:
+    """Stop the currently playing J.A.R.V.I.S. alarm, if any."""
+    try:
+        import winsound
+        winsound.PlaySound(None, 0)
+        return True
+    except Exception as error:
+        log_error("The custom J.A.R.V.I.S. timer alarm could not be stopped.", error)
         return False
 
 
@@ -969,21 +991,38 @@ def set_timer(seconds: float, label: str = "Timer") -> str:
     deadline = time.monotonic() + seconds
     holder: dict[str, threading.Timer] = {}
 
-    def finished() -> None:
-        try:
-            # The chime is triggered before queued speech, so it is audible
-            # even when the text-to-speech queue is busy. MessageBeep returns
-            # immediately and runs independently of the GUI thread.
-            play_timer_sound()
-        except Exception as error:
-            log_error("Timer completion sound failed.", error)
+    def announce_finished() -> None:
         try:
             speak(f"Your {safe_label} has finished.")
-        finally:
-            with _timer_lock:
-                timer = holder.get("timer")
-                if timer is not None:
-                    _active_timers.discard(timer)
+        except Exception as error:
+            log_error("Timer completion announcement failed.", error)
+
+    def finished() -> None:
+        # The countdown is complete now; remove it from the active list before
+        # the ten-second alarm runs so users can immediately create another.
+        with _timer_lock:
+            timer = holder.get("timer")
+            if timer is not None:
+                _active_timers.discard(timer)
+
+        try:
+            alarm_started = play_timer_sound()
+        except Exception as error:
+            log_error("Timer completion sound failed.", error)
+            alarm_started = False
+
+        if alarm_started:
+            # Keep speech from talking over the custom alarm. Announce once the
+            # bundled ten-second sound has finished playing.
+            announcement = threading.Timer(TIMER_SOUND_DURATION_SECONDS, announce_finished)
+            announcement.daemon = True
+            try:
+                announcement.start()
+            except RuntimeError as error:
+                log_error("Could not schedule the timer completion announcement.", error)
+                announce_finished()
+        else:
+            announce_finished()
 
     timer = threading.Timer(max(0.0, deadline - time.monotonic()), finished)
     timer.daemon = True

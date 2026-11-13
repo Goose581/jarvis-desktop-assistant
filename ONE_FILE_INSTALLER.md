@@ -44,3 +44,7 @@ Internet is required on the build computer to download Ollama if it is not cache
 ## Windows validation before release
 
 The current environment can test Python modules, API request construction and the Tk GUI under a virtual display. It cannot validate an actual Windows Authenticode result, run the real Ollama installer, or compile Inno Setup. Perform the checks in `RELEASE_CHECKLIST.md` on a Windows PC before publishing the installer.
+
+## Startup update approval
+
+The v1.6.2 launcher checks GitHub Releases before opening the main interface. If a newer release is available, it presents a branded prompt with release notes and asks the user to choose **Install update** or **Not now**. No update ZIP is downloaded until the user chooses Install update. Not now or closing the prompt starts the currently installed application. If the update check cannot reach GitHub, J.A.R.V.I.S. continues with the installed version. Existing v1.6.1 users must run the v1.6.2 installer once to replace the outer launcher; later app-only updates use the approval prompt automatically.

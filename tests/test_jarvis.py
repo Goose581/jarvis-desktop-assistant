@@ -42,22 +42,77 @@ class TimerSoundTests(unittest.TestCase):
         finally:
             jarvis.set_timer_sound_enabled(original, persist=False)
 
-    def test_timer_sound_calls_windows_system_notification(self):
+    def test_resource_path_uses_pyinstaller_bundle_root_when_frozen(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(jarvis.sys, "_MEIPASS", temporary, create=True):
+                self.assertEqual(
+                    jarvis.resource_path(jarvis.TIMER_SOUND_RELATIVE_PATH),
+                    Path(temporary) / jarvis.TIMER_SOUND_RELATIVE_PATH,
+                )
+
+    def test_custom_timer_wav_is_exactly_ten_seconds(self):
+        import wave
+        sound_path = jarvis.resource_path(jarvis.TIMER_SOUND_RELATIVE_PATH)
+        self.assertTrue(sound_path.is_file())
+        with wave.open(str(sound_path), "rb") as sound:
+            duration = sound.getnframes() / sound.getframerate()
+            self.assertEqual(sound.getnchannels(), 1)
+            self.assertEqual(sound.getsampwidth(), 2)
+            self.assertAlmostEqual(duration, 10.0, places=6)
+
+    def test_timer_sound_uses_bundled_custom_wav_async(self):
         from types import SimpleNamespace
-        fake = SimpleNamespace(MB_ICONASTERISK=0x40, MessageBeep=lambda kind: True)
+        from unittest.mock import Mock
+        fake_play = Mock(return_value=None)
+        fake = SimpleNamespace(
+            SND_FILENAME=0x00020000,
+            SND_ASYNC=0x0001,
+            SND_NODEFAULT=0x0002,
+            PlaySound=fake_play,
+        )
         with patch.dict("sys.modules", {"winsound": fake}), \
              patch.object(jarvis, "timer_sound_enabled", True):
             self.assertTrue(jarvis.play_timer_sound())
+        path, flags = fake_play.call_args.args
+        self.assertTrue(path.endswith("jarvis_timer_alarm.wav"))
+        self.assertEqual(flags, 0x00020000 | 0x0001 | 0x0002)
+        self.assertFalse(hasattr(fake, "MessageBeep"))
 
     def test_forced_test_sound_bypasses_disabled_preference(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
-        fake_beep = Mock(return_value=True)
-        fake = SimpleNamespace(MB_ICONASTERISK=0x40, MessageBeep=fake_beep)
+        fake_play = Mock(return_value=None)
+        fake = SimpleNamespace(SND_FILENAME=2, SND_ASYNC=1, SND_NODEFAULT=4, PlaySound=fake_play)
         with patch.dict("sys.modules", {"winsound": fake}), \
              patch.object(jarvis, "timer_sound_enabled", False):
             self.assertTrue(jarvis.play_timer_sound(force=True))
-        fake_beep.assert_called_once_with(0x40)
+        fake_play.assert_called_once()
+
+    def test_stop_timer_sound_stops_custom_audio(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        fake_play = Mock(return_value=None)
+        fake = SimpleNamespace(PlaySound=fake_play)
+        with patch.dict("sys.modules", {"winsound": fake}):
+            self.assertTrue(jarvis.stop_timer_sound())
+        fake_play.assert_called_once_with(None, 0)
+
+    def test_timer_sound_disabled_does_not_import_or_play_audio(self):
+        with patch.object(jarvis, "timer_sound_enabled", False), \
+             patch.dict("sys.modules", {"winsound": None}):
+            self.assertFalse(jarvis.play_timer_sound())
+
+    def test_timer_sound_failure_is_logged_without_system_sound_fallback(self):
+        from types import SimpleNamespace
+        fake = SimpleNamespace(
+            SND_FILENAME=2, SND_ASYNC=1, SND_NODEFAULT=4,
+            PlaySound=lambda *_args: (_ for _ in ()).throw(OSError("audio unavailable")),
+        )
+        with patch.dict("sys.modules", {"winsound": fake}), \
+             patch.object(jarvis, "timer_sound_enabled", True), \
+             patch.object(jarvis, "log_error") as log_error:
+            self.assertFalse(jarvis.play_timer_sound())
+            log_error.assert_called_once()
 
     def test_timer_uses_monotonic_deadline_to_avoid_setup_delay(self):
         captured = {}
@@ -75,17 +130,7 @@ class TimerSoundTests(unittest.TestCase):
             jarvis.set_timer(2.0)
         self.assertAlmostEqual(captured["interval"], 1.65, places=3)
 
-    def test_timer_sound_falls_back_safely_when_windows_audio_fails(self):
-        from types import SimpleNamespace
-        fake = SimpleNamespace(MB_ICONASTERISK=0x40, MessageBeep=lambda kind: (_ for _ in ()).throw(OSError("audio unavailable")))
-        with patch.dict("sys.modules", {"winsound": fake}), \
-             patch.object(jarvis, "timer_sound_enabled", True), \
-             patch.object(jarvis, "_safe_console_message") as fallback, \
-             patch.object(jarvis, "log_error"):
-            self.assertFalse(jarvis.play_timer_sound())
-            fallback.assert_called_once_with("\a")
-
-    def test_timer_completion_sound_is_triggered_before_voice(self):
+    def test_timer_completion_alarm_starts_before_voice_announcement(self):
         order = []
         class ImmediateTimer:
             def __init__(self, interval, function):
@@ -97,15 +142,40 @@ class TimerSoundTests(unittest.TestCase):
             def cancel(self):
                 return None
         with patch.object(jarvis.threading, "Timer", ImmediateTimer), \
-             patch.object(jarvis, "play_timer_sound", side_effect=lambda: order.append("sound")), \
+             patch.object(jarvis, "play_timer_sound", side_effect=lambda: order.append("sound") or True), \
              patch.object(jarvis, "speak", side_effect=lambda _message: order.append("voice")), \
              patch.object(jarvis, "_active_timers", set()):
             result = jarvis.set_timer(0.25, "test")
         self.assertIn("test", result.lower())
         self.assertEqual(order, ["sound", "voice"])
 
+    def test_timer_announcement_is_scheduled_after_full_ten_second_alarm(self):
+        created = []
+        class ControlledTimer:
+            def __init__(self, interval, function):
+                self.interval = interval
+                self.function = function
+                self.daemon = False
+                created.append(self)
+            def start(self):
+                if len(created) == 1:
+                    self.function()  # fire the countdown; retain delayed announcement
+            def cancel(self):
+                return None
+        active = set()
+        with patch.object(jarvis.threading, "Timer", ControlledTimer), \
+             patch.object(jarvis, "play_timer_sound", return_value=True), \
+             patch.object(jarvis, "speak") as speak, \
+             patch.object(jarvis, "_active_timers", active):
+            jarvis.set_timer(1.0)
+            self.assertEqual(len(created), 2)
+            self.assertAlmostEqual(created[1].interval, 10.0)
+            speak.assert_not_called()
+            self.assertEqual(len(active), 0)
+            created[1].function()
+            speak.assert_called_once_with("Your Timer has finished.")
+
     def test_cancelled_timer_does_not_play_sound_or_speak(self):
-        captured = {}
         class RecordingTimer:
             def __init__(self, interval, function):
                 self.function = function
@@ -126,11 +196,7 @@ class TimerSoundTests(unittest.TestCase):
         sound.assert_not_called()
         speak.assert_not_called()
 
-    def test_timer_sound_disabled_still_allows_completion_voice(self):
-        from types import SimpleNamespace
-        from unittest.mock import Mock
-        fake_beep = Mock(return_value=True)
-        fake = SimpleNamespace(MB_ICONASTERISK=0x40, MessageBeep=fake_beep)
+    def test_sound_disabled_still_announces_timer_completion_immediately(self):
         class ImmediateTimer:
             def __init__(self, interval, function):
                 self.function = function
@@ -141,11 +207,10 @@ class TimerSoundTests(unittest.TestCase):
                 return None
         with patch.object(jarvis.threading, "Timer", ImmediateTimer), \
              patch.object(jarvis, "timer_sound_enabled", False), \
-             patch.dict("sys.modules", {"winsound": fake}), \
+             patch.object(jarvis, "play_timer_sound", return_value=False), \
              patch.object(jarvis, "speak") as speak, \
              patch.object(jarvis, "_active_timers", set()):
             jarvis.set_timer(0.1)
-        fake_beep.assert_not_called()
         speak.assert_called_once()
 
     def test_short_timer_keeps_fractional_deadline(self):
@@ -167,7 +232,6 @@ class TimerSoundTests(unittest.TestCase):
             self.assertLessEqual(captured["interval"], 0.25)
         for timer in list(active):
             timer.cancel()
-
 
 
 class CalculatorTests(unittest.TestCase):
