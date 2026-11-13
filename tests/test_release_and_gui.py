@@ -295,3 +295,20 @@ class AllInOneInstallerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SpotifyGuiTests(unittest.TestCase):
+    def test_sidebar_exposes_spotify_controls(self):
+        source = (PROJECT_ROOT / "JARVIS_GUI.py").read_text(encoding="utf-8")
+        self.assertIn('"Spotify controls"', source)
+        self.assertIn("self.open_spotify_controls", source)
+
+    def test_spotify_panel_exposes_transport_and_search_controls(self):
+        source = (PROJECT_ROOT / "JARVIS_GUI.py").read_text(encoding="utf-8")
+        for label in ("Open Spotify", "Previous", "Play / Pause", "Next track", "SEARCH SPOTIFY", "Search"):
+            with self.subTest(label=label):
+                self.assertIn(label, source)
+
+    def test_system_prompt_mentions_spotify_controls(self):
+        import JARVIS_GUI as gui
+        self.assertIn("control Spotify playback", gui.SYSTEM_PROMPT)

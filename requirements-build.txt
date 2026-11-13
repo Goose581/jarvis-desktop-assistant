@@ -6,3 +6,4 @@ pyautogui>=0.9.54
 pyperclip>=1.8
 comtypes>=1.4
 tzdata>=2024.1
+pycaw>=20260921

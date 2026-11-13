@@ -1,8 +1,15 @@
-J.A.R.V.I.S. v1.6.2 — Test results
+J.A.R.V.I.S. v1.6.3 test verification
 
-Automated unit tests: 1,472 passed, 0 failures, 0 errors.
-Python compileall: passed for application, launcher, workspace, model manager, runtime hook and tests.
-Startup update prompt GUI smoke (Xvfb): passed — Install update button returned True; Not now returned False; download progress window closed after a successful mocked download.
-Updater flow regression tests: passed — same/older releases do not offer an update; newer release metadata is validated; missing assets and invalid tags are rejected; no download occurs before consent; Not now launches the current app; Install update downloads then starts the helper; no-update and offline paths still launch the current app.
+The Windows-only APPDATA candidate test was made platform-independent.
+It now compares pathlib.Path objects instead of assuming forward-slash path
+strings. Production Spotify discovery already included the APPDATA\Spotify\Spotify.exe candidate.
 
-Not tested in this environment: Windows PyInstaller frozen EXE packaging, Inno Setup compilation, Windows desktop shortcut behaviour, actual GitHub release prompt against the live repository, and full update execution on the user's Windows PC.
+Verification performed in this environment:
+- Python compileall: PASSED
+- Full unittest suite: 1,595 tests PASSED
+- Spotify APPDATA path test: PASSED
+
+Windows-specific integration still needs confirmation on the user's PC:
+- Spotify.exe discovery at the actual Windows installation path.
+- Per-application Spotify volume through Windows Core Audio.
+- Full build and installer execution on Windows 11.

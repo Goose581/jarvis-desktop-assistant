@@ -1,3 +1,13 @@
+## v1.6.3 — Spotify controls and Spotify-only volume
+
+J.A.R.V.I.S. includes a Spotify Controls panel and natural-language commands for opening Spotify, play/pause, next/previous, searching, reading Spotify's app-session volume, setting a percentage, nudging volume up/down, and muting/unmuting Spotify. The volume slider and commands target Spotify's own Windows Core Audio session through Pycaw's `SimpleAudioVolume` interface. They do **not** change Windows master volume or the volume of other applications. If Spotify has not started playback yet, Windows may not have created its audio session; start a track and refresh the panel.
+
+Playback buttons still use Windows global multimedia keys and may be delivered to another active media session. Spotify-only volume is separate from those keys. It does not require Spotify API credentials. The app bundles the Pycaw/comtypes dependencies in the desktop build; the source build installs `pycaw` from `requirements-build.txt`.
+
+Example commands: “set Spotify volume to 30%”, “turn Spotify volume down”, “increase Spotify volume by 10%”, “what's Spotify's volume?”, “mute Spotify”, and “unmute Spotify”.
+
+When ready, create a GitHub Release and set the tag and title to `v1.6.3`. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for updates, plus `output\JARVIS-Setup.exe` for first-time installs.
+
 ## v1.6.2 — User-approved startup updates
 
 The launcher checks GitHub Releases before opening the main J.A.R.V.I.S. window. When a newer release with both required assets is available, a branded blue/turquoise startup dialog displays the version and release notes. The user must choose **Install update** before anything is downloaded or installed. **Not now** (or closing the dialog) launches the currently installed version without changing it; the update is offered again next launch. After consent, a progress window downloads the app ZIP and SHA-256 file, verifies the checksum, and hands off to the existing safe updater/rollback flow. If GitHub is offline or the prompt cannot open, the current version launches and the reason is logged. The v1.6.2 installer must be run once over an existing v1.6.1 installation to replace the older launcher; later application updates can then use the prompted in-app startup flow.
@@ -59,12 +69,13 @@ The desktop interface now supports six switchable palettes (Midnight Blue, Arcti
 - `JARVIS_GUI.py` — desktop interface and searchable Workspace command centre.
 - `jarvis_workspace.py` — 25 offline-first feature utilities and bounded persistent stores.
 - `jarvis_model_manager.py` — Ollama model listing, streamed downloads, activation and deletion.
+- `jarvis_spotify.py` — Spotify playback/search and Spotify-only Windows audio-session volume controls.
 - `launcher.py` — GitHub Releases updater and application launcher.
 - `update_config.json` — GitHub `owner/repository` setting.
 - `build_release.bat` — test, build, ZIP, checksum and installer script.
 - `Diagnose_Ollama.bat` — creates a text report containing Ollama CLI/model/API checks and recent app logs.
 - `installer.iss` — Inno Setup installer definition.
-- `requirements-build.txt` — build-time Python dependencies.
+- `requirements-build.txt` — build-time Python dependencies, including Pycaw for per-app audio volume.
 - `tests/` — automated tests.
 - `.github/workflows/windows-ci.yml` — Windows-hosted syntax and test checks on Python 3.13 and 3.14.
 - `download_ollama.ps1` — official runtime download and Authenticode verification for the one-file installer.
@@ -143,9 +154,9 @@ The tools are grouped into Time & dates, Calculators, Text & data, Developer too
 - Detailed app errors are stored at `%LOCALAPPDATA%\JARVIS\jarvis.log`.
 - Use `Diagnose_Ollama.bat` to generate `ollama-diagnostic.txt` when needed.
 
-## First GitHub Release
+## GitHub Releases and updates
 
-Do not publish until the installer has been tested locally. Then create a GitHub Release and set the tag and title to `v1.6.0`, attaching `dist\JARVIS-Windows.zip`, `dist\JARVIS-Windows.zip.sha256`, and `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
+For the current project, use tag and title `v1.6.3`. Build and test on Windows before publishing. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for the prompted updater, plus `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
 
 ## Safety and notes
 

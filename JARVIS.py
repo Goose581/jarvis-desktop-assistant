@@ -32,9 +32,11 @@ from pathlib import Path
 from typing import Any
 
 import jarvis_workspace as workspace
+import jarvis_spotify as spotify
+spotify_control = spotify.spotify_control
 
 APP_NAME = "J.A.R.V.I.S."
-APP_VERSION = "1.6.2"
+APP_VERSION = "1.6.3"
 # Recommended lightweight model for J.A.R.V.I.S. on the user's 16 GB DDR3 PC.
 DEFAULT_MODEL = "gemma4:e2b"
 LEGACY_DEFAULT_MODELS = {"llama3.2:1b"}
@@ -1317,7 +1319,7 @@ def _request_may_need_tools(user_input: str) -> bool:
     text = str(user_input).strip().casefold()
     action_start = re.compile(
         r"^(?:(?:please\s+)?(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?)?"
-        r"(?:open|launch|start|run|close|quit|search|google|look\s+up|browse|"
+        r"(?:open|launch|start|run|close|quit|search|google|look\s+up|browse|spotify|pause|resume|skip|next|previous|"
         r"type|paste|take\s+(?:a\s+)?note|save\s+(?:a\s+)?note|"
         r"read\s+(?:my\s+)?notes?|open\s+(?:my\s+)?notes?|"
         r"set\s+(?:a\s+)?timer|cancel\s+(?:all\s+)?timers?|"
@@ -1404,7 +1406,7 @@ def get_system_info(**kwargs: Any) -> str:
 def get_help(**kwargs: Any) -> str:
     return (
         "I can calculate using BIDMAS, search the web, open apps and websites, "
-        "take/read notes, paste exact text, set timers, and open common folders. "
+        "take/read notes, paste exact text, set timers, open common folders, and control Spotify playback, search, and Spotify-only volume. "
         "Workspace adds 25 local tools: world clocks, timezone and date tools, unit/percentage/bill calculators, "
         "text analysis and cleanup, case conversion, URL/JSON/Base64 tools, hashes, UUID/password generation, "
         "random picker, dice, stopwatch, Pomodoro planner, tasks, reminders, bookmarks, snippets and system health. "
@@ -1486,6 +1488,7 @@ available_tools = {
     "type_text": type_text,
     "cancel_timers": cancel_timers,
     "workspace_action": workspace.workspace_action,
+    "spotify_control": spotify.spotify_control,
 }
 
 # Pass explicit JSON schemas to Ollama instead of Python callables. The Ollama
@@ -1541,6 +1544,8 @@ OLLAMA_TOOL_SCHEMAS: list[dict[str, Any]] = [
     _ollama_tool("cancel_timers", "Cancel all active timers.", {}),
     _ollama_tool("workspace_action", "Use one of J.A.R.V.I.S.'s 25 deterministic Workspace utilities. Pass the user's action as a concise command, preserving any exact text or values.",
                  {"command": {"type": "string", "description": "A Workspace command such as 'Convert 5 miles to km', 'Generate a UUID', or 'List my tasks'."}}, ("command",)),
+    _ollama_tool("spotify_control", "Control Spotify: open, play/pause, skip tracks, search, set or adjust Spotify-only volume, check volume, or mute/unmute Spotify. Volume changes use Spotify's own Windows audio session and never change the system master volume or other apps.",
+                 {"action": {"type": "string", "description": "One of open, play_pause, next, previous, search, get_volume, set_volume, volume_up, volume_down, mute or unmute."}, "query": {"type": "string", "description": "Optional music search phrase. Required when action is search."}, "level": {"type": "number", "description": "Optional Spotify volume percentage (0-100) for set_volume, or adjustment amount for volume_up/volume_down."}}, ("action",)),
 ]
 
 
@@ -1573,6 +1578,10 @@ def _handle_direct_request(user_input: str) -> str | None:
     """Return a direct result for deterministic tasks; None means ask the AI."""
     cleaned = user_input.strip()
     lowered = cleaned.lower()
+
+    spotify_result = spotify.handle_spotify_command(cleaned)
+    if spotify_result is not None:
+        return spotify_result
 
     # The Workspace catalogue runs deterministic local utilities before the
     # language model, keeping arithmetic, text and productivity actions fast.

@@ -1,0 +1,16 @@
+J.A.R.V.I.S. v1.6.3 - Windows test portability fix
+
+The Spotify executable discovery code already includes:
+  %APPDATA%\Spotify\Spotify.exe
+
+The failing unit test compared Path strings against a hard-coded forward-slash
+suffix. Windows formats pathlib.Path strings with backslashes, so the assertion
+failed even though the candidate was present. The test now compares Path
+objects, which is platform-independent.
+
+Verification in this environment:
+- Python compileall: passed
+- Full unittest suite: 1,595 passed
+
+No application version bump is needed; v1.6.3 has not yet been released.
+Run the test suite and build on the target Windows PC before publishing.

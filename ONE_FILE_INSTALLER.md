@@ -1,3 +1,7 @@
+## Spotify controls (v1.6.3)
+
+The desktop app includes local Spotify controls: open Spotify, play/pause, next/previous track, and search. Search opens Spotify results rather than automatically selecting a specific track. Playback commands use Windows multimedia keys, which Windows routes to its active media session; another active media player can receive the command. No Spotify API credentials are required for these desktop controls.
+
 # J.A.R.V.I.S. one-file Windows installer
 
 ## What the end user downloads
@@ -48,3 +52,8 @@ The current environment can test Python modules, API request construction and th
 ## Startup update approval
 
 The v1.6.2 launcher checks GitHub Releases before opening the main interface. If a newer release is available, it presents a branded prompt with release notes and asks the user to choose **Install update** or **Not now**. No update ZIP is downloaded until the user chooses Install update. Not now or closing the prompt starts the currently installed application. If the update check cannot reach GitHub, J.A.R.V.I.S. continues with the installed version. Existing v1.6.1 users must run the v1.6.2 installer once to replace the outer launcher; later app-only updates use the approval prompt automatically.
+
+
+## Spotify volume dependency
+
+The desktop bundle includes Pycaw and comtypes for per-application Windows Core Audio session control. The Spotify volume slider targets Spotify.exe audio sessions only; it does not adjust Windows master volume. No Spotify API credentials are required.

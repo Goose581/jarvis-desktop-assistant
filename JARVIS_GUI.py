@@ -181,7 +181,7 @@ SYSTEM_PROMPT = (
     "You are J.A.R.V.I.S., a capable, concise and polite local desktop assistant. "
     "Answer general questions clearly, accurately and in plain language. "
     "You can open supported apps and websites, search the web, check the date and time, "
-    "take and read notes, paste text, open common folders, and manage timers. "
+    "take and read notes, paste text, open common folders, manage timers, and control Spotify playback, search and Spotify-only app volume. Spotify volume must never change Windows master volume or other apps. "
     "For typing requests, preserve the user's exact wording and pass the complete text in the text argument. "
     "For web searches, pass only the user's complete search phrase in the query argument; never pass tool metadata. "
     "Arithmetic and common time/timer commands are handled locally before you are called; do not call unrelated tools for them. "
@@ -384,9 +384,11 @@ class JarvisApp:
             ("⌕", "Search the web", "Search the web for Python tutorials"),
             ("▤", "Open my notes", "Open my notes"),
             ("◉", "Set a timer", "Set a timer for 1 minute"),
+            ("♫", "Spotify controls", "__spotify_controls__"),
         ]
         for symbol, label, command in quick_actions:
-            self._quick_action_button(sidebar, symbol, label, lambda value=command: self.use_quick_action(value))
+            callback = self.open_spotify_controls if command == "__spotify_controls__" else (lambda value=command: self.use_quick_action(value))
+            self._quick_action_button(sidebar, symbol, label, callback)
 
         # Pinned model / local status card at the bottom of the rail.
         bottom = tk.Frame(sidebar, bg=SIDEBAR)
@@ -569,6 +571,189 @@ class JarvisApp:
         self.root.bind("<Control-n>", lambda _event: self.clear_chat())
         self.root.bind("<Control-s>", lambda _event: self.export_chat())
         self.root.bind("<Control-k>", lambda _event: self.open_workspace(focus_search=True))
+
+    def open_spotify_controls(self) -> None:
+        """Open a compact Spotify remote using the app's current theme."""
+        window = tk.Toplevel(self.root)
+        window.title("J.A.R.V.I.S. — Spotify Controls")
+        window.geometry("520x570")
+        window.minsize(460, 500)
+        window.configure(bg=BG)
+        window.transient(self.root)
+
+        outer = tk.Frame(window, bg=BG, padx=24, pady=22)
+        outer.pack(fill="both", expand=True)
+        tk.Label(outer, text="SPOTIFY  /  MEDIA", bg=BG, fg=ACCENT,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w")
+        tk.Label(outer, text="Music controls", bg=BG, fg=TEXT,
+                 font=("Segoe UI", 21, "bold")).pack(anchor="w", pady=(2, 3))
+        tk.Label(outer, text="Control Spotify without leaving J.A.R.V.I.S.", bg=BG, fg=MUTED,
+                 font=("Segoe UI", 9)).pack(anchor="w", pady=(0, 18))
+
+        status = tk.Label(outer, text="Ready. Open Spotify or control its current playback.",
+                          bg=PANEL, fg=MUTED, font=("Segoe UI", 9), wraplength=410,
+                          justify="left", padx=12, pady=11)
+        status.pack(fill="x", pady=(0, 16))
+
+        controls = tk.Frame(outer, bg=BG)
+        controls.pack(fill="x")
+        actions = (("Open Spotify", "open"), ("Previous", "previous"),
+                   ("Play / Pause", "play_pause"), ("Next track", "next"))
+        for index, (label, action) in enumerate(actions):
+            button = tk.Button(
+                controls, text=label,
+                command=lambda chosen=action: self._spotify_panel_action(chosen, "", status),
+                bg=ACCENT_DARK if action == "play_pause" else PANEL_LIGHT,
+                fg=ACCENT if action == "play_pause" else TEXT,
+                activebackground=BLUE_DARK, activeforeground=TEXT,
+                font=("Segoe UI", 9, "bold"), relief="flat", bd=0,
+                padx=10, pady=11, cursor="hand2",
+            )
+            button.grid(row=index // 2, column=index % 2, sticky="ew", padx=4, pady=4)
+        controls.grid_columnconfigure(0, weight=1)
+        controls.grid_columnconfigure(1, weight=1)
+
+        # Spotify-only volume uses the Windows audio session for Spotify.exe.
+        # It does not touch the Windows master volume or other applications.
+        tk.Label(outer, text="SPOTIFY APP VOLUME", bg=BG, fg=ACCENT,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", pady=(18, 7))
+        volume_header = tk.Frame(outer, bg=BG)
+        volume_header.pack(fill="x")
+        volume_value = tk.IntVar(value=50)
+        volume_readout = tk.Label(volume_header, text="Checking Spotify…", bg=BG, fg=TEXT,
+                                  font=("Segoe UI", 10, "bold"))
+        volume_readout.pack(side="left")
+        volume_hint = tk.Label(volume_header, text="Only changes Spotify", bg=BG, fg=MUTED,
+                               font=("Segoe UI", 8))
+        volume_hint.pack(side="right")
+        volume_scale = tk.Scale(
+            outer, from_=0, to=100, orient="horizontal", variable=volume_value,
+            showvalue=False, resolution=1, length=420, bg=BG, fg=TEXT,
+            troughcolor=PANEL_LIGHT, activebackground=ACCENT,
+            highlightthickness=0, bd=0, sliderrelief="flat",
+            command=lambda raw: volume_readout.configure(text=f"Spotify volume · {int(float(raw))}%"),
+        )
+        volume_scale.pack(fill="x", pady=(0, 5))
+
+        volume_buttons = tk.Frame(outer, bg=BG)
+        volume_buttons.pack(fill="x")
+        tk.Button(
+            volume_buttons, text="− 5%", command=lambda: self._spotify_volume_adjust("volume_down", status, volume_value, volume_readout),
+            bg=PANEL_LIGHT, fg=TEXT, activebackground=BLUE_DARK, activeforeground=TEXT,
+            font=("Segoe UI", 8, "bold"), relief="flat", bd=0, padx=12, pady=7, cursor="hand2",
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            volume_buttons, text="+ 5%", command=lambda: self._spotify_volume_adjust("volume_up", status, volume_value, volume_readout),
+            bg=PANEL_LIGHT, fg=TEXT, activebackground=BLUE_DARK, activeforeground=TEXT,
+            font=("Segoe UI", 8, "bold"), relief="flat", bd=0, padx=12, pady=7, cursor="hand2",
+        ).pack(side="left", padx=6)
+        mute_button = tk.Button(
+            volume_buttons, text="Mute Spotify", bg=ACCENT_DARK, fg=ACCENT,
+            activebackground=BLUE_DARK, activeforeground=TEXT,
+            font=("Segoe UI", 8, "bold"), relief="flat", bd=0, padx=12, pady=7, cursor="hand2",
+        )
+        mute_button.pack(side="right")
+
+        audio_state = {"muted": False}
+
+        def refresh_volume() -> None:
+            try:
+                state = assistant.spotify.get_spotify_audio_state()
+                if state is None:
+                    volume_readout.configure(text="Play something in Spotify to control its volume")
+                    mute_button.configure(text="Mute Spotify", state="disabled")
+                    return
+                audio_state["muted"] = bool(state["muted"])
+                volume_value.set(int(state["volume"]))
+                volume_readout.configure(text=f"Spotify volume · {int(state['volume'])}%")
+                mute_button.configure(
+                    text="Unmute Spotify" if audio_state["muted"] else "Mute Spotify",
+                    state="normal",
+                )
+                mute_button.configure(command=lambda: self._spotify_volume_mute(
+                    "unmute" if audio_state["muted"] else "mute", status, window.after, refresh_volume
+                ))
+            except Exception as error:
+                volume_readout.configure(text="Spotify volume unavailable")
+                mute_button.configure(state="disabled")
+                status.configure(text=f"Spotify volume check failed: {error}", fg=ERROR)
+
+        def apply_volume(_event=None) -> None:
+            result = assistant.spotify_control(action="set_volume", level=volume_value.get())
+            status.configure(text=result, fg=SUCCESS if "Set Spotify's own volume" in result else ERROR)
+            self.status_label.configure(text=result, fg=ACCENT)
+            refresh_volume()
+
+        def poll_volume() -> None:
+            try:
+                if not window.winfo_exists():
+                    return
+                refresh_volume()
+                window.after(2500, poll_volume)
+            except tk.TclError:
+                return
+
+        volume_scale.bind("<ButtonRelease-1>", apply_volume)
+        volume_scale.bind("<KeyRelease>", apply_volume)
+        mute_button.configure(command=lambda: self._spotify_volume_mute("mute", status, window.after, refresh_volume))
+        window.after(250, poll_volume)
+
+        tk.Label(outer, text="SEARCH SPOTIFY", bg=BG, fg=ACCENT,
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w", pady=(18, 7))
+        search_row = tk.Frame(outer, bg=BG)
+        search_row.pack(fill="x")
+        query = tk.StringVar()
+        entry = tk.Entry(search_row, textvariable=query, bg=PANEL, fg=TEXT,
+                         insertbackground=ACCENT, relief="flat", font=("Segoe UI", 10))
+        entry.pack(side="left", fill="x", expand=True, ipady=9, padx=(0, 8))
+        search_button = tk.Button(
+            search_row, text="Search", command=lambda: self._spotify_panel_action("search", query.get(), status),
+            bg=ACCENT, fg="#06202C", activebackground="#72EFE3", activeforeground="#06202C",
+            font=("Segoe UI", 9, "bold"), relief="flat", bd=0, padx=14, pady=8, cursor="hand2",
+        )
+        search_button.pack(side="right")
+        entry.bind("<Return>", lambda _event: self._spotify_panel_action("search", query.get(), status))
+        tk.Label(
+            outer,
+            text="The volume slider changes Spotify only, not Windows master volume. Playback buttons use global Windows media keys and may reach another active media app.",
+            bg=BG, fg=MUTED, font=("Segoe UI", 8), wraplength=420, justify="left",
+        ).pack(anchor="w", pady=(12, 0))
+        entry.focus_set()
+
+    def _spotify_panel_action(self, action: str, query: str, status: tk.Label) -> None:
+        """Run one Spotify action and show the tool's actual result."""
+        result = assistant.spotify_control(action=action, query=query)
+        try:
+            status.configure(text=result, fg=SUCCESS if not result.lower().startswith(("i couldn't", "spotify action not")) else ERROR)
+            self.status_label.configure(text=result, fg=ACCENT)
+        except tk.TclError:
+            pass
+
+    def _spotify_volume_adjust(self, action: str, status: tk.Label, volume_value, volume_readout) -> None:
+        """Adjust Spotify's own Windows audio-session volume by five percent."""
+        result = assistant.spotify_control(action=action)
+        try:
+            status.configure(text=result, fg=SUCCESS if "Spotify's own volume" in result else ERROR)
+            self.status_label.configure(text=result, fg=ACCENT)
+            state = assistant.spotify.get_spotify_audio_state()
+            if state is not None:
+                volume_value.set(int(state["volume"]))
+                volume_readout.configure(text=f"Spotify volume · {int(state['volume'])}%")
+        except Exception as error:
+            try:
+                status.configure(text=f"Spotify volume update failed: {error}", fg=ERROR)
+            except tk.TclError:
+                pass
+
+    def _spotify_volume_mute(self, action: str, status: tk.Label, after, refresh) -> None:
+        """Mute/unmute Spotify only, then refresh the panel state."""
+        result = assistant.spotify_control(action=action)
+        try:
+            status.configure(text=result, fg=SUCCESS if result.startswith(("Muted Spotify", "Unmuted Spotify")) else ERROR)
+            self.status_label.configure(text=result, fg=ACCENT)
+            after(150, refresh)
+        except tk.TclError:
+            pass
 
     def _section_label(self, parent: tk.Widget, text: str, top: int = 0) -> None:
         tk.Label(parent, text=text, bg=SIDEBAR, fg="#6589A7", font=("Segoe UI", 7, "bold")).pack(
