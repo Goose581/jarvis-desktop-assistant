@@ -1,6 +1,8 @@
-ollama
-pyttsx3
-pyautogui
-pyperclip
-pyinstaller
-comtypes
+# Pin PyInstaller to avoid unexpected hook changes between clean builds.
+pyinstaller==6.22.3
+ollama>=0.4,<1
+pyttsx3>=2.90
+pyautogui>=0.9.54
+pyperclip>=1.8
+comtypes>=1.4
+tzdata>=2024.1

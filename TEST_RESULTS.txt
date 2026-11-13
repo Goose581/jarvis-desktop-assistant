@@ -1,0 +1,22 @@
+J.A.R.V.I.S. v1.6.0 — All-in-One installer and AI Model Manager
+
+Automated test command:
+  python -m unittest discover -s tests -v
+
+Result:
+  Ran 1455 tests
+  OK
+
+Additional checks:
+  - Python compileall passed for all application, helper, updater and test modules.
+  - Model tag validation, listing metadata, streamed pull progress, server error handling, incomplete-stream verification and model deletion tests passed.
+  - Release version synchronisation and single-file installer source/signature checks passed.
+  - GUI Model Manager smoke test under Xvfb passed: main app/window opened, mocked installed model was populated, events were processed, and the app closed cleanly.
+
+Target-PC checks still required:
+  - Run build_release.bat on Windows with Inno Setup 6 and internet access.
+  - Confirm download_ollama.ps1 verifies the real current Ollama Authenticode signature.
+  - Confirm output\JARVIS-Setup.exe is produced and installs Ollama only when needed.
+  - Confirm a clean Windows account can download a chosen model using AI Model Manager.
+  - Confirm a pre-existing Ollama installation and its model store are preserved.
+  - Test selected-model chat, six themes, Workspace tools, voice, clipboard and timer audio on the target PC.

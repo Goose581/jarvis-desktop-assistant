@@ -1,54 +1,146 @@
-# J.A.R.V.I.S. Windows EXE + auto-updates
+## v1.6.0 — All-in-One Edition and AI Model Manager
 
-This project keeps your current `JARVIS.py` assistant as the app. It adds a separate Windows launcher that checks a **public GitHub repository's latest Release**, verifies the update ZIP with SHA-256, and replaces the app folder automatically. Users install once; later app releases do not require running the installer again.
+When ready, create a GitHub Release and set the tag and title to `v1.6.0`.
 
-## What is included
+The first-time Windows installer is now a single `JARVIS-Setup.exe` that includes J.A.R.V.I.S. and the official Ollama Windows installer. During the build, `download_ollama.ps1` downloads `https://ollama.com/download/OllamaSetup.exe`, validates its Authenticode signature, and checks that the publisher is Ollama Inc. The Inno Setup installer then installs Ollama silently for the current user if a standard per-user Ollama installation is not already detected. Python and application libraries are bundled by PyInstaller; users do not need to separately install Python or Ollama.
 
-- `JARVIS.py` — your current assistant code, kept as-is.
-- `launcher.py` — checks GitHub Releases and safely applies a downloaded update.
-- `update_config.json` — set your GitHub `owner/repository` here.
-- `build_release.bat` — builds the PyInstaller app, launcher, update ZIP, and checksum on Windows.
-- `installer.iss` — Inno Setup recipe for the first-time installer.
-- `requirements-build.txt` — Python packages needed on the build computer.
+Open **AI model manager** from the left navigation rail or Assistant Settings to refresh installed models, download a recommended model or enter a custom Ollama tag, watch streamed download progress, activate an installed model, or remove a model after confirmation. Model files remain in Ollama's model store and are not re-downloaded by J.A.R.V.I.S. application updates. The recommended default remains `gemma4:e2b` for the original 16 GB PC profile. Available models depend on the Ollama registry and local hardware.
 
-## One-time setup
+**Important distribution detail:** The single installer includes the Ollama runtime but does not embed multi-gigabyte model weights. A model is selected and downloaded in the app after setup. Internet access is required for the installer to download Ollama during the build and for first-time model downloads. The resulting end-user download is one `JARVIS-Setup.exe`; no separate Python or Ollama installer is needed.
 
-1. Create a **public** GitHub repository for J.A.R.V.I.S.
-2. Edit `update_config.json` and replace `Goose581/jarvis-desktop-assistant` with your actual GitHub `owner/repository`, (`Goose581/jarvis-desktop-assistant`).
-3. On a Windows 10/11 build computer, install 64-bit Python 3.10 or newer. During setup, enable **Add Python to PATH**.
-4. Install [Inno Setup](https://jrsoftware.org/isinfo.php) if you want the one-time `JARVIS-Setup.exe` installer.
-5. Double-click `build_release.bat`. It creates:
-   - `dist\JARVIS\` — the app files
-   - `dist\JARVIS-Launcher.exe` — the update-aware launcher
-   - `dist\JARVIS-Windows.zip` — the update package for GitHub Releases
-   - `dist\JARVIS-Windows.zip.sha256` — the integrity checksum
-   - `output\JARVIS-Setup.exe` — the initial installer, if Inno Setup is installed
+## v1.5.1 — Faster timers and completion chime
 
-## First release
+Timers use monotonic deadlines and play a Windows system notification sound immediately when they finish, before any queued voice response. The sound is enabled by default and can be switched off or tested in Assistant Settings → Timer sound.
 
-1. Run the build script.
-2. In GitHub, create a Release with tag `v1.0.0` (not a draft or prerelease).
-3. Attach **both** `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` to that release.
-4. Attach `output\JARVIS-Setup.exe` too, so users can install J.A.R.V.I.S. for the first time.
-5. Install using `JARVIS-Setup.exe`. The shortcut opens the launcher, which starts the app.
+## v1.5.0 — Switchable themes
 
-## Publishing an update later
+Six selectable colour themes are available from Assistant Settings → Appearance theme: Midnight Blue, Arctic Light, Emerald, Nebula Violet, Crimson and Solar Amber. Theme previews apply immediately and are saved with Settings. The theme applies across the main dashboard and open Workspace/dialog windows.
 
-1. Edit `JARVIS.py` with your changes.
-2. Open `build_release.bat` and increase `APP_VERSION` (for example, from `1.0.0` to `1.0.1`).
-3. Run `build_release.bat` again.
-4. Create a new GitHub Release with the matching tag, e.g. `v1.0.1`.
-5. Attach the new `JARVIS-Windows.zip` and `JARVIS-Windows.zip.sha256`.
 
-The next time an installed user opens J.A.R.V.I.S., the launcher sees the newer version, downloads it, checks the checksum, swaps the app files, and starts the updated app. They do **not** need to reinstall the setup EXE for normal app updates.
 
-## Important notes
+# J.A.R.V.I.S. — Windows Desktop Assistant
 
-- The GitHub repository must be public for this starter updater, and releases must be published as normal stable releases.
-- Keep the asset names exactly `JARVIS-Windows.zip` and `JARVIS-Windows.zip.sha256`.
-- The ZIP must contain the **contents** of the PyInstaller `dist\JARVIS` folder at its root. The build script creates it this way.
-- The first-time installer places the app under `%LOCALAPPDATA%\Programs\JARVIS`, so updates do not require administrator rights.
-- Ollama and the `llama3.2:1b` model remain separate prerequisites on each PC. The EXE bundles your Python code and Python packages, not the Ollama runtime/model.
-- Build the Windows EXEs on Windows. A Linux build cannot produce a proper Windows PyInstaller executable.
-- This starter updater updates the assistant app, not the launcher. If the launcher/updater itself needs changing later, publish a new installer for that one-time launcher change.
-- Users should only install releases from a GitHub repository they trust. SHA-256 catches corrupted or mismatched downloads; it is not a code-signing certificate.
+A local-first Windows desktop assistant with a Tkinter chat interface, Ollama-powered conversation, voice responses, desktop tools, and an optional GitHub Releases updater.
+
+## v1.5.0 appearance themes
+
+The desktop interface now supports six switchable palettes (Midnight Blue, Arctic Light, Emerald, Nebula Violet, Crimson and Solar Amber). Choose a theme in Assistant Settings → Appearance theme; the preview updates immediately, Cancel restores the previous palette, and Save remembers the choice. All palettes apply across the main dashboard, chat messages, Workspace, settings, stopwatch and ttk controls. The default is Midnight Blue. The Command Centre design includes: a branded navigation rail, local AI core status card, large hero banner, conversation panel, quick-launch tiles, system snapshot and a redesigned message composer. Chat messages use distinct user/assistant cards with avatars and context labels. Workspace, settings, menus and scrollbars share the same palette. The default window size is 1360×860 (saved user window sizes are preserved).
+
+## What's included in v1.5.0
+
+- Faster everyday conversation: greetings, "How are you?", thanks and identity questions are answered locally without starting an AI request.
+- Ordinary chat requests omit desktop-tool schemas; action requests retain the explicit JSON tool schemas needed for tool calling.
+- Model-aware Ollama thinking control: uses the model's advertised `false` or `low` setting when `/api/show` exposes one, and caches that capability for 30 minutes.
+- Shorter response budgets and a smaller recent-history window to reduce unnecessary generation and prompt work on older PCs.
+- The default model remains `gemma4:e2b` with an 8,192-token context; custom model and context settings are preserved.
+- Deterministic BIDMAS calculator, web search, app launch/close, notes, timers, folder opening and typing tools. Timer completion plays an immediate Windows system notification sound by default; toggle or test it in Assistant Settings. Timer deadlines use `time.monotonic()` so short timers are not extended by startup bookkeeping.
+- Explicit JSON schemas for Ollama tools, avoiding the Python 3.14/Pydantic callable-annotation error.
+- Resilient Ollama local connection discovery through localhost/IPv4/IPv6 and proxy bypass for loopback.
+- Custom midnight-blue and turquoise Command Centre GUI, settings, voice switch, conversation export, copy support and updater.
+- Six selectable app-wide themes with live preview and persistent preference.
+- Searchable Workspace command centre with 25 built-in features, category filters, one-click examples and Ctrl+K command palette.
+- Interactive stopwatch and scheduled reminder notifications.
+- Local date/time, converters, text utilities, developer helpers, tasks, bookmarks and snippets in `jarvis_workspace.py`.
+
+## Repository contents
+
+- `JARVIS.py` — assistant logic, deterministic routing, calculator, tools and Ollama connection.
+- `JARVIS_GUI.py` — desktop interface and searchable Workspace command centre.
+- `jarvis_workspace.py` — 25 offline-first feature utilities and bounded persistent stores.
+- `jarvis_model_manager.py` — Ollama model listing, streamed downloads, activation and deletion.
+- `launcher.py` — GitHub Releases updater and application launcher.
+- `update_config.json` — GitHub `owner/repository` setting.
+- `build_release.bat` — test, build, ZIP, checksum and installer script.
+- `Diagnose_Ollama.bat` — creates a text report containing Ollama CLI/model/API checks and recent app logs.
+- `installer.iss` — Inno Setup installer definition.
+- `requirements-build.txt` — build-time Python dependencies.
+- `tests/` — automated tests.
+- `.github/workflows/windows-ci.yml` — Windows-hosted syntax and test checks on Python 3.13 and 3.14.
+- `download_ollama.ps1` — official runtime download and Authenticode verification for the one-file installer.
+- `CHANGELOG.md`, `CODE_AUDIT.md`, `RELEASE_CHECKLIST.md`, `ONE_FILE_INSTALLER.md` — release documentation.
+
+## Requirements
+
+1. Windows 10 22H2 or newer, 64-bit (Windows 11 is supported).
+2. Internet connection for the first-time setup and first model download.
+3. At least 4 GB of free disk space for the Ollama runtime, plus additional space for whichever model(s) you choose. Model files can be several GB each.
+
+The single `JARVIS-Setup.exe` installs the Ollama runtime automatically when it is not already present. You do not need to separately install Python or Ollama. Model weights are intentionally not embedded in the installer: open AI Model Manager after setup and download the model you want. This keeps the installer independent of a particular AI model and lets you add/switch models later.
+
+## Build on Windows
+
+1. Install 64-bit Python 3.10+ and Inno Setup 6.
+2. Ensure `update_config.json` points to `Goose581/jarvis-desktop-assistant` (or your repository).
+3. Double-click `build_release.bat`.
+
+The script creates a virtual environment, installs build dependencies, compiles Python, runs the full test suite, downloads the official Ollama installer, verifies its Authenticode signature/publisher, builds the app and updater, verifies the release ZIP/checksum and compiles the one-file installer when Inno Setup is detected. The Ollama setup binary is stored temporarily under `vendor\` and embedded in `output\JARVIS-Setup.exe`; it is excluded from the source ZIP and Git history.
+
+Generated files:
+
+- `dist\JARVIS\JARVIS.exe` — desktop app.
+- `dist\JARVIS-Launcher.exe` — update-aware launcher.
+- `dist\JARVIS-Windows.zip` — app update package.
+- `dist\JARVIS-Windows.zip.sha256` — package checksum.
+- `output\JARVIS-Setup.exe` — single first-time installer containing J.A.R.V.I.S. and the verified Ollama runtime. Model weights are downloaded later from AI Model Manager.
+
+## Workspace features in v1.4.0
+
+Open **Explore Workspace** in the sidebar or press **Ctrl+K**. Search by tool name, category or keyword, filter by category, then launch an example directly in chat or copy its command. The 25 new features are:
+
+1. World clock for IANA timezones.
+2. Timezone converter.
+3. Date difference calculator.
+4. Date calculator (days, weeks and months).
+5. Unit converter (length, mass, volume, speed and data).
+6. Percentage calculator.
+7. Bill splitter and tip calculator.
+8. Text analyser (characters, words, lines, sentences and reading estimate).
+9. Case converter (upper, lower, title, sentence, camel, snake, kebab and Pascal).
+10. Text cleaner.
+11. URL encoder/decoder.
+12. JSON formatter and validator.
+13. Base64 encoder/decoder.
+14. Text hash generator (SHA-256, SHA-512, SHA-1 and MD5).
+15. UUID generator.
+16. Secure password generator.
+17. Random picker.
+18. Dice roller.
+19. Interactive stopwatch with laps.
+20. Pomodoro planner.
+21. Persistent task manager.
+22. Persistent reminders with in-app notifications.
+23. Persistent bookmarks with search.
+24. Persistent reusable text snippets.
+25. System disk and memory health snapshot.
+
+The tools are grouped into Time & dates, Calculators, Text & data, Developer tools, Fun & focus, Productivity, Personal library and System. Tasks, reminders, bookmarks and snippets are stored locally under `%LOCALAPPDATA%\JARVIS` (or the per-user application data fallback). Password generation uses Python's cryptographically secure `secrets` API; generated passwords are not saved by J.A.R.V.I.S.
+
+## Speed behaviour in v1.2.8
+
+- "How are you?", greetings, thanks and "Who are you?" use local deterministic replies.
+- Regular knowledge questions are sent without the tool catalogue, reducing prompt overhead.
+- When the selected model advertises thinking controls through Ollama `/api/show`, the app chooses `false` when available or `low` otherwise. If no setting is advertised, it preserves the model's default behaviour.
+- The model's thinking controls are cached for 30 minutes.
+- Ordinary chat allows up to 224 generated tokens; tool follow-ups use a smaller budget. History is capped at 18 messages including the system prompt.
+- Gemma 4 E2B remains the default. Actual tokens/second varies by CPU, GPU, drivers, model quantisation and background load.
+
+## Ollama troubleshooting
+
+- Check that `http://localhost:11434/api/tags` lists the configured model.
+- The app tries localhost, IPv4 and IPv6 loopback and uses the same successful endpoint for the SDK client.
+- Local requests bypass machine-wide HTTP proxy variables.
+- Detailed app errors are stored at `%LOCALAPPDATA%\JARVIS\jarvis.log`.
+- Use `Diagnose_Ollama.bat` to generate `ollama-diagnostic.txt` when needed.
+
+## First GitHub Release
+
+Do not publish until the installer has been tested locally. Then create a GitHub Release and set the tag and title to `v1.6.0`, attaching `dist\JARVIS-Windows.zip`, `dist\JARVIS-Windows.zip.sha256`, and `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
+
+## Safety and notes
+
+- The calculator uses a restricted AST evaluator, not `eval`.
+- App closing is limited to a supported allowlist; the AI does not run arbitrary shell commands.
+- Typing pastes exact text into the focused application after a countdown.
+- Timers run only while J.A.R.V.I.S. remains open.
+- Ollama chooses CPU/GPU placement automatically; J.A.R.V.I.S. does not force GPU offload.
+- Settings/logs are stored under `%LOCALAPPDATA%\JARVIS`.
