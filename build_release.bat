@@ -145,7 +145,7 @@ if exist output\JARVIS-Setup.exe echo One-file installer: output\JARVIS-Setup.ex
 echo Build log:    %BUILD_LOG%
 echo.
 echo Do not publish until the new installer has been tested locally.
-pause
+if not defined CI pause
 exit /b 0
 
 :failed
@@ -157,5 +157,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -LiteralPath
 echo --------------------------------------------------------------
 echo Fix the reported step before publishing this version.
 echo You can send build.log to ChatGPT for help.
-pause
+if not defined CI pause
 exit /b 1
