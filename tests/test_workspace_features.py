@@ -1,4 +1,4 @@
-"""1,250 focused feature cases: 50 independent cases for each new Workspace feature."""
+"""1,550 focused v1.7.0 cases: 50 for each of 30 tools plus 50 clock/date cases."""
 from __future__ import annotations
 
 import base64
@@ -367,17 +367,19 @@ class WorkspaceValidationTests(unittest.TestCase):
             WorkspaceRandomChoiceTests, WorkspaceDiceTests, WorkspaceStopwatchTests,
             WorkspacePomodoroTests, WorkspaceTaskManagerTests, WorkspaceReminderTests,
             WorkspaceBookmarkTests, WorkspaceSnippetTests, WorkspaceSystemHealthTests,
+            WorkspaceCsvInsightsTests, WorkspaceMarkdownTableTests, WorkspaceColourTests,
+            WorkspaceTextDiffTests, WorkspaceNumberBaseTests,
         ]
-        self.assertEqual(len(feature_suites), 25)
+        self.assertEqual(len(feature_suites), 30)
         for suite in feature_suites:
             with self.subTest(feature=suite.__name__):
                 cases = [name for name in dir(suite) if name.startswith("test_case_")]
                 self.assertEqual(len(cases), 50)
 
-    def test_catalog_has_exactly_25_unique_feature_ids(self):
+    def test_catalog_has_exactly_30_unique_feature_ids(self):
         ids = [item["id"] for item in ws.FEATURE_CATALOG]
-        self.assertEqual(len(ids), 25)
-        self.assertEqual(len(set(ids)), 25)
+        self.assertEqual(len(ids), 30)
+        self.assertEqual(len(set(ids)), 30)
 
     def test_all_catalog_items_have_ui_fields(self):
         for item in ws.FEATURE_CATALOG:
@@ -443,10 +445,10 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 
 class WorkspaceIntegrationTests(unittest.TestCase):
-    def test_all_25_catalog_examples_route_without_ai(self):
+    def test_all_30_catalog_examples_route_without_ai(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as folder, patch.dict("os.environ", {"LOCALAPPDATA": folder}):
-            self.assertEqual(len(ws.FEATURE_CATALOG), 25)
+            self.assertEqual(len(ws.FEATURE_CATALOG), 30)
             for feature in ws.FEATURE_CATALOG:
                 with self.subTest(feature=feature["id"]):
                     result = ws.dispatch_command(feature["command"])
