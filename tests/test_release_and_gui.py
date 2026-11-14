@@ -33,6 +33,15 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertIn("actions/setup-python@v7", workflow)
         self.assertIn("python -m unittest discover -s tests -v", workflow)
 
+    def test_v170_icon_is_generated_and_used_by_app_and_installer(self):
+        build = (PROJECT_ROOT / "build_release.bat").read_text(encoding="utf-8")
+        installer = (PROJECT_ROOT / "installer.iss").read_text(encoding="utf-8")
+        gui = (PROJECT_ROOT / "JARVIS_GUI.py").read_text(encoding="utf-8")
+        self.assertIn("generate_icon.py", build)
+        self.assertIn("--icon assets\\jarvis.ico", build)
+        self.assertIn("SetupIconFile=assets\\jarvis.ico", installer)
+        self.assertIn("iconbitmap", gui)
+
     def test_update_config_contains_repository_owner_and_name(self):
         import json
 
