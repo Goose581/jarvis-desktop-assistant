@@ -1,3 +1,16 @@
+## v1.7.0 — Accurate clock, five new Workspace tools and custom icon
+
+- Time/date questions are answered locally from the Windows system clock, including seconds, weekday, calendar date and local timezone abbreviation; Ollama is not asked to estimate these facts.
+- Expanded deterministic date/time question recognition to cover weekday and date phrasing.
+- Added CSV insights (headers, row/column counts, empty cells and duplicate rows).
+- Added Markdown table generation from CSV-formatted text.
+- Added HEX/RGB/HSL colour conversion.
+- Added unified text comparison.
+- Added integer conversion between bases 2–36.
+- Added a generated blue/turquoise J.A.R.V.I.S. icon for the desktop executable, application window, installer, Start Menu and desktop shortcuts.
+- Added 300 new focused tests: 50 clock/date cases and 50 cases for each of the five new tools, plus validation and integration checks.
+- Updated app, launcher, installer, build and release metadata to v1.7.0.
+- The existing Windows launcher automatically checks the latest GitHub Release at startup. When a newer release contains both the update ZIP and SHA-256 file, it downloads the package, verifies the checksum, stages it, swaps the app folder with rollback protection, and relaunches J.A.R.V.I.S. If checking/downloading fails, the installed version still starts. Settings and Ollama model data remain in the per-user data folders.
 ## v1.6.4 — Automatic Ollama startup and connection recovery
 
 - Automatically checks the local Ollama API during application startup.

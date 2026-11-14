@@ -16,7 +16,7 @@ jobs:
   tests:
     name: Python ${{ matrix.python-version }} / Windows
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -40,3 +40,25 @@ jobs:
 
       - name: Run automated tests
         run: python -m unittest discover -s tests -v
+
+      - name: Install Inno Setup
+        if: matrix.python-version == '3.13'
+        run: choco install innosetup --yes --no-progress
+        shell: powershell
+
+      - name: Build Windows app, update ZIP and installer
+        if: matrix.python-version == '3.13'
+        run: .\build_release.bat
+        shell: cmd
+
+      - name: Upload v1.7.0 Windows packages
+        if: matrix.python-version == '3.13' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-v1.7.0-Windows
+          path: |
+            dist/JARVIS-Windows.zip
+            dist/JARVIS-Windows.zip.sha256
+            output/JARVIS-Setup.exe
+          if-no-files-found: error
+          retention-days: 30

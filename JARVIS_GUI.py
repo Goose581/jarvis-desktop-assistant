@@ -206,6 +206,10 @@ class JarvisApp:
         settings = assistant.load_settings()
 
         self.root.title(f"{assistant.APP_NAME} — Desktop Assistant")
+        try:
+            self.root.iconbitmap(str(assistant.resource_path(Path("assets") / "jarvis.ico")))
+        except (OSError, tk.TclError):
+            pass
         self.root.geometry(settings.get("window_geometry", "1360x860"))
         self.root.minsize(1080, 700)
         self.root.configure(bg=BG)

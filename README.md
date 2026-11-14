@@ -1,3 +1,17 @@
+## v1.7.0 — Accurate clock, five new Workspace tools and custom icon
+
+- Time/date questions are answered locally from the Windows system clock, including seconds, weekday, calendar date and local timezone abbreviation; Ollama is not asked to estimate these facts.
+- Expanded deterministic date/time question recognition to cover weekday and date phrasing.
+- Added CSV insights (headers, row/column counts, empty cells and duplicate rows).
+- Added Markdown table generation from CSV-formatted text.
+- Added HEX/RGB/HSL colour conversion.
+- Added unified text comparison.
+- Added integer conversion between bases 2–36.
+- Added a generated blue/turquoise J.A.R.V.I.S. icon for the desktop executable, application window, installer, Start Menu and desktop shortcuts.
+- Added 300 new focused tests: 50 clock/date cases and 50 cases for each of the five new tools, plus validation and integration checks.
+- Updated app, launcher, installer, build and release metadata to v1.7.0.
+- The existing Windows launcher automatically checks the latest GitHub Release at startup. When a newer release contains both the update ZIP and SHA-256 file, it downloads the package, verifies the checksum, stages it, swaps the app folder with rollback protection, and relaunches J.A.R.V.I.S. If checking/downloading fails, the installed version still starts. Settings and Ollama model data remain in the per-user data folders.
+- To publish this release, set the GitHub tag and title to `v1.7.0` and attach the Windows update ZIP, checksum and setup executable after a successful Windows build.
 ## v1.6.4 — Automatic Ollama startup and connection recovery
 
 J.A.R.V.I.S. checks the local Ollama API during startup. If the API is unavailable and `OLLAMA_HOST` is local/default, it locates the installed `ollama.exe`, starts `ollama.exe serve` invisibly in the background, and retries for up to 12 seconds. The same readiness check runs before chat and model-manager operations so Ollama can recover if it is closed while J.A.R.V.I.S. remains open. Remote `OLLAMA_HOST` configurations are not overridden. See `OLLAMA_AUTOSTART.md` for diagnostics.
@@ -73,7 +87,7 @@ The desktop interface now supports six switchable palettes (Midnight Blue, Arcti
 
 - `JARVIS.py` — assistant logic, deterministic routing, calculator, tools and Ollama connection.
 - `JARVIS_GUI.py` — desktop interface and searchable Workspace command centre.
-- `jarvis_workspace.py` — 25 offline-first feature utilities and bounded persistent stores.
+- `jarvis_workspace.py` — 30 offline-first feature utilities and bounded persistent stores.
 - `jarvis_model_manager.py` — Ollama model listing, streamed downloads, activation and deletion.
 - `jarvis_spotify.py` — Spotify playback/search and Spotify-only Windows audio-session volume controls.
 - `launcher.py` — GitHub Releases updater and application launcher.
@@ -85,6 +99,7 @@ The desktop interface now supports six switchable palettes (Midnight Blue, Arcti
 - `tests/` — automated tests.
 - `.github/workflows/windows-ci.yml` — Windows-hosted syntax and test checks on Python 3.13 and 3.14.
 - `download_ollama.ps1` — official runtime download and Authenticode verification for the one-file installer.
+- `generate_icon.py` — generates the custom Windows `.ico` and PNG branding assets during the build.
 - `CHANGELOG.md`, `CODE_AUDIT.md`, `RELEASE_CHECKLIST.md`, `ONE_FILE_INSTALLER.md` — release documentation.
 
 ## Requirements
@@ -111,9 +126,9 @@ Generated files:
 - `dist\JARVIS-Windows.zip.sha256` — package checksum.
 - `output\JARVIS-Setup.exe` — single first-time installer containing J.A.R.V.I.S. and the verified Ollama runtime. Model weights are downloaded later from AI Model Manager.
 
-## Workspace features in v1.4.0
+## Workspace features in v1.7.0
 
-Open **Explore Workspace** in the sidebar or press **Ctrl+K**. Search by tool name, category or keyword, filter by category, then launch an example directly in chat or copy its command. The 25 new features are:
+Open **Explore Workspace** in the sidebar or press **Ctrl+K**. Search by tool name, category or keyword, filter by category, then launch an example directly in chat or copy its command. The 30 built-in features are:
 
 1. World clock for IANA timezones.
 2. Timezone converter.
@@ -140,6 +155,11 @@ Open **Explore Workspace** in the sidebar or press **Ctrl+K**. Search by tool na
 23. Persistent bookmarks with search.
 24. Persistent reusable text snippets.
 25. System disk and memory health snapshot.
+26. CSV insights (headers, row/column counts, empty cells and duplicate rows).
+27. Markdown table generator from CSV-formatted text.
+28. HEX/RGB/HSL colour converter.
+29. Line-by-line text comparison.
+30. Integer base converter (bases 2–36).
 
 The tools are grouped into Time & dates, Calculators, Text & data, Developer tools, Fun & focus, Productivity, Personal library and System. Tasks, reminders, bookmarks and snippets are stored locally under `%LOCALAPPDATA%\JARVIS` (or the per-user application data fallback). Password generation uses Python's cryptographically secure `secrets` API; generated passwords are not saved by J.A.R.V.I.S.
 
@@ -162,7 +182,7 @@ The tools are grouped into Time & dates, Calculators, Text & data, Developer too
 
 ## GitHub Releases and updates
 
-For the current project, use tag and title `v1.6.4`. Build and test on Windows before publishing. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for the prompted updater, plus `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
+For the current project, use tag and title `v1.7.0`. Build and test on Windows before publishing. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for the prompted updater, plus `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
 
 ## Safety and notes
 

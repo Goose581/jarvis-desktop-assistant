@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 REM Keep this version in sync with APP_VERSION in JARVIS.py.
-set "APP_VERSION=1.6.4"
+set "APP_VERSION=1.7.0"
 set "PYTHON=.venv\Scripts\python.exe"
 set "BUILD_LOG=%~dp0build.log"
 set "BUILD_STAGE=initial checks"
@@ -51,6 +51,10 @@ if errorlevel 1 goto :failed
 call "%PYTHON%" -m pip install --no-cache-dir --disable-pip-version-check -r requirements-build.txt >>"%BUILD_LOG%" 2>&1
 if errorlevel 1 goto :failed
 
+set "BUILD_STAGE=JARVIS icon generation"
+call "%PYTHON%" generate_icon.py >>"%BUILD_LOG%" 2>&1
+if errorlevel 1 goto :failed
+
 echo.
 echo [2/6] Checking Python syntax...
 set "BUILD_STAGE=Python syntax check"
@@ -79,7 +83,7 @@ if exist JARVIS-Launcher.spec del /q JARVIS-Launcher.spec
 echo.
 echo [5/6] Building the J.A.R.V.I.S. desktop application...
 set "BUILD_STAGE=desktop application packaging"
-call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all pycaw --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import winsound --hidden-import pyttsx3.drivers.sapi5 --add-data "assets\jarvis_timer_alarm.wav;assets" JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
+call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --icon assets\jarvis.ico --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all pycaw --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import winsound --hidden-import pyttsx3.drivers.sapi5 --add-data "assets\jarvis_timer_alarm.wav;assets" --add-data "assets\jarvis.png;assets" --add-data "assets\jarvis.ico;assets" JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
 if errorlevel 1 goto :failed
 
 if not exist "dist\JARVIS\JARVIS.exe" (
@@ -141,7 +145,7 @@ if exist output\JARVIS-Setup.exe echo One-file installer: output\JARVIS-Setup.ex
 echo Build log:    %BUILD_LOG%
 echo.
 echo Do not publish until the new installer has been tested locally.
-pause
+if not defined CI pause
 exit /b 0
 
 :failed
@@ -153,5 +157,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Content -LiteralPath
 echo --------------------------------------------------------------
 echo Fix the reported step before publishing this version.
 echo You can send build.log to ChatGPT for help.
-pause
+if not defined CI pause
 exit /b 1

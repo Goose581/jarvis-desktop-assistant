@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.6.4"
+  #define MyAppVersion "1.7.0"
 #endif
 #define MyAppName "J.A.R.V.I.S."
 
@@ -17,9 +17,10 @@ OutputBaseFilename=JARVIS-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=assets\jarvis.ico
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayName=J.A.R.V.I.S. Desktop Assistant
-UninstallDisplayIcon={app}\JARVIS-Launcher.exe
+UninstallDisplayIcon={app}\app\JARVIS.exe
 SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
@@ -35,8 +36,8 @@ Source: "dist\JARVIS\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdi
 Source: "vendor\OllamaSetup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
-Name: "{autoprograms}\JARVIS\J.A.R.V.I.S."; Filename: "{app}\JARVIS-Launcher.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\J.A.R.V.I.S."; Filename: "{app}\JARVIS-Launcher.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\JARVIS\J.A.R.V.I.S."; Filename: "{app}\JARVIS-Launcher.exe"; WorkingDir: "{app}"; IconFilename: "{app}\app\JARVIS.exe"
+Name: "{autodesktop}\J.A.R.V.I.S."; Filename: "{app}\JARVIS-Launcher.exe"; WorkingDir: "{app}"; IconFilename: "{app}\app\JARVIS.exe"; Tasks: desktopicon
 
 [Run]
 ; Install Ollama for the current Windows user only when it is not already present.
