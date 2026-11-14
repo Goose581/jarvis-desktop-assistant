@@ -48,7 +48,7 @@ jobs:
 
       - name: Build Windows app, update ZIP and installer
         if: matrix.python-version == '3.13'
-        run: .\\build_release.bat
+        run: .\build_release.bat
         shell: cmd
 
       - name: Upload v1.7.0 Windows packages
