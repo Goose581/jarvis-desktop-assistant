@@ -37,7 +37,7 @@ import jarvis_spotify as spotify
 spotify_control = spotify.spotify_control
 
 APP_NAME = "J.A.R.V.I.S."
-APP_VERSION = "1.6.4"
+APP_VERSION = "1.7.0"
 # Recommended lightweight model for J.A.R.V.I.S. on the user's 16 GB DDR3 PC.
 DEFAULT_MODEL = "gemma4:e2b"
 LEGACY_DEFAULT_MODELS = {"llama3.2:1b"}
@@ -835,22 +835,30 @@ def extract_math_expression(user_input: str) -> str | None:
 # TIME, NOTES, TIMERS, AND SYSTEM STATUS
 # ==========================================
 
-def get_current_time(**kwargs: Any) -> str:
-    now = _datetime.datetime.now().astimezone()
-    return "The current time is " + now.strftime("%I:%M %p on %A, %B %d, %Y") + "."
+def get_current_time(now: _datetime.datetime | None = None, **kwargs: Any) -> str:
+    """Return the actual Windows-local clock and calendar date, never an LLM estimate."""
+    moment = now if now is not None else _datetime.datetime.now().astimezone()
+    local = moment.astimezone()
+    zone = local.tzname() or local.strftime("%z")
+    return f"The current time is {local.strftime('%I:%M:%S %p on %A, %B %d, %Y')} ({zone})."
 
 
 def is_time_request(user_input: str) -> bool:
-    text = re.sub(r"[!?.,]+$", "", str(user_input).strip().lower())
+    """Route common time, date and weekday questions to the local system clock."""
+    text = re.sub(r"[!?.,]+$", "", str(user_input).strip().casefold())
+    text = re.sub(r"\\s+", " ", text)
     patterns = (
-        r"^(?:please\s+)?what(?:'s|\s+is)\s+the\s+(?:current\s+)?time$",
-        r"^(?:(?:please\s+)?(?:can|could|would)\s+you\s+)?tell\s+me\s+the\s+(?:current\s+)?time$",
-        r"^(?:please\s+)?what\s+time\s+is\s+it$",
-        r"^(?:please\s+)?what(?:'s|\s+is)\s+today(?:'s)?\s+date$",
+        r"^(?:please )?what(?:'s| is) the (?:current )?time$",
+        r"^(?:(?:please )?(?:can|could|would) you )?tell me the (?:current )?time$",
+        r"^(?:please )?what time is it$",
+        r"^(?:please )?what(?:'s| is) (?:today'?s )?date$",
+        r"^(?:please )?(?:what day is it|what day of the week is it|what's the day|which day is it)$",
+        r"^(?:please )?(?:what is|what's) today's day$",
+        r"^(?:please )?(?:give me )?the current date$",
+        r"^(?:please )?(?:what is|what's) the date today$",
+        r"^(?:please )?(?:what is|what's) the time and date$",
     )
     return any(re.fullmatch(pattern, text) for pattern in patterns)
-
-
 def notes_file() -> Path:
     """Return the user's notes file; Documents is a fallback if Desktop is unavailable."""
     home = Path.home()
