@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.6.4"
+  #define MyAppVersion "1.7.0"
 #endif
 #define MyAppName "J.A.R.V.I.S."
 
@@ -17,6 +17,7 @@ OutputBaseFilename=JARVIS-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=assets\\jarvis.ico
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayName=J.A.R.V.I.S. Desktop Assistant
 UninstallDisplayIcon={app}\JARVIS-Launcher.exe
