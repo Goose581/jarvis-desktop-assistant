@@ -10,6 +10,7 @@
 - Added a generated blue/turquoise J.A.R.V.I.S. icon for the desktop executable, application window, installer, Start Menu and desktop shortcuts.
 - Added 300 new focused tests: 50 clock/date cases and 50 cases for each of the five new tools, plus validation and integration checks.
 - Updated app, launcher, installer, build and release metadata to v1.7.0.
+- The existing Windows launcher automatically checks the latest GitHub Release at startup. When a newer release contains both the update ZIP and SHA-256 file, it downloads the package, verifies the checksum, stages it, swaps the app folder with rollback protection, and relaunches J.A.R.V.I.S. If checking/downloading fails, the installed version still starts. Settings and Ollama model data remain in the per-user data folders.
 ## v1.6.4 — Automatic Ollama startup and connection recovery
 
 - Automatically checks the local Ollama API during application startup.
