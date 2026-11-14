@@ -838,7 +838,7 @@ def extract_math_expression(user_input: str) -> str | None:
 def get_current_time(now: _datetime.datetime | None = None, **kwargs: Any) -> str:
     """Return the actual Windows-local clock and calendar date, never an LLM estimate."""
     moment = now if now is not None else _datetime.datetime.now().astimezone()
-    local = moment.astimezone()
+    local = moment if now is not None and moment.tzinfo is not None else moment.astimezone()
     zone = local.tzname() or local.strftime("%z")
     return f"The current time is {local.strftime('%I:%M:%S %p on %A, %B %d, %Y')} ({zone})."
 
