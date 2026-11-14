@@ -557,6 +557,83 @@ def system_health(disk_path: str | Path | None = None) -> dict[str, Any]:
             "platform": os.name}
 
 
+
+# 26–30. J.A.R.V.I.S. v1.7.0 deterministic utilities.
+def csv_insights(text: str) -> dict[str, Any]:
+    import csv, io
+    value = _text(text, "CSV data", 100_000)
+    try: parsed = list(csv.reader(io.StringIO(value), strict=True))
+    except csv.Error as exc: raise ValueError(f"CSV could not be parsed: {exc}") from exc
+    parsed = [row for row in parsed if any(cell.strip() for cell in row)]
+    if len(parsed) < 2: raise ValueError("CSV needs a header row and at least one data row.")
+    headers = [cell.strip() for cell in parsed[0]]
+    if not headers or any(not item for item in headers): raise ValueError("Every CSV column needs a header.")
+    if any(len(row) != len(headers) for row in parsed[1:]): raise ValueError("Every CSV row must have the same number of columns as the header.")
+    rows = parsed[1:]; seen: set[tuple[str, ...]] = set(); duplicates = 0
+    for row in rows:
+        key = tuple(row)
+        if key in seen: duplicates += 1
+        seen.add(key)
+    return {"headers": headers, "rows": len(rows), "columns": len(headers),
+            "non_empty_cells": sum(bool(cell.strip()) for row in rows for cell in row),
+            "duplicate_rows": duplicates,
+            "non_empty_by_column": [sum(bool(row[i].strip()) for row in rows) for i in range(len(headers))]}
+
+def markdown_table(headers: Iterable[Any], rows: Iterable[Iterable[Any]]) -> str:
+    names = [_text(str(item), "Header", 200).replace("|", r"\|").replace("\n", " ") for item in headers]
+    if not names or len(names) > 100: raise ValueError("Provide between 1 and 100 table headers.")
+    output = ["| " + " | ".join(names) + " |", "| " + " | ".join("---" for _ in names) + " |"]
+    for index, row in enumerate(rows):
+        if index >= 1000: raise ValueError("A Markdown table cannot exceed 1,000 rows.")
+        values = list(row)
+        if len(values) > len(names): raise ValueError("A table row has more cells than there are headers.")
+        values += [""] * (len(names) - len(values))
+        cells = [_text(str(v), "Cell", 2_000).replace("|", r"\|").replace("\r", " ").replace("\n", " ") for v in values]
+        output.append("| " + " | ".join(cells) + " |")
+    return "\n".join(output)
+
+def convert_colour(value: str) -> dict[str, str]:
+    import colorsys
+    raw = _text(value, "Colour", 80).strip().casefold()
+    match = re.fullmatch(r"#?([0-9a-f]{3}|[0-9a-f]{6})", raw)
+    if match:
+        digits = match.group(1)
+        if len(digits) == 3: digits = "".join(ch * 2 for ch in digits)
+        red, green, blue = (int(digits[i:i+2], 16) for i in (0, 2, 4))
+    else:
+        match = re.fullmatch(r"rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)", raw)
+        if not match: raise ValueError("Use HEX such as #38E0D0 or rgb(56,224,208).")
+        red, green, blue = map(int, match.groups())
+        if any(channel > 255 for channel in (red, green, blue)): raise ValueError("RGB channels must be between 0 and 255.")
+    hue, saturation, lightness = colorsys.rgb_to_hls(red/255, green/255, blue/255)
+    return {"hex": f"#{red:02X}{green:02X}{blue:02X}", "rgb": f"rgb({red}, {green}, {blue})",
+            "hsl": f"hsl({round(hue*360)}, {round(saturation*100)}%, {round(lightness*100)}%)"}
+
+def compare_texts(original: str, revised: str) -> str:
+    import difflib
+    left = _text(original, "Original text", 20_000).splitlines()
+    right = _text(revised, "Revised text", 20_000).splitlines()
+    diff = list(difflib.unified_diff(left, right, fromfile="original", tofile="revised", lineterm=""))
+    return "\n".join(diff) if diff else "No differences found."
+
+def convert_number_base(value: str, source_base: int, target_base: int) -> dict[str, str]:
+    raw = _text(value, "Number", 256).strip()
+    for base, label in ((source_base, "Source base"), (target_base, "Target base")):
+        if isinstance(base, bool) or not isinstance(base, int) or not 2 <= base <= 36:
+            raise ValueError(f"{label} must be a whole number from 2 to 36.")
+    try: number = int(raw, source_base)
+    except ValueError as exc: raise ValueError(f"That value is not a valid base-{source_base} integer.") from exc
+    alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    def render(n: int, base: int) -> str:
+        if n == 0: return "0"
+        sign = "-" if n < 0 else ""; n = abs(n); digits = []
+        while n:
+            n, rem = divmod(n, base); digits.append(alphabet[rem])
+        return sign + "".join(reversed(digits))
+    return {"decimal": str(number), "binary": render(number, 2), "octal": render(number, 8),
+            "hex": render(number, 16), "result": render(number, target_base), "base": str(target_base)}
+
+
 FEATURE_CATALOG = [
     {"id": "world_clock", "category": "Time & dates", "title": "World clock", "description": "Show current time in any IANA timezone.", "command": "What time is it in Europe/London?", "keywords": "time timezone clock city"},
     {"id": "timezone_convert", "category": "Time & dates", "title": "Timezone converter", "description": "Convert a date and time between timezones.", "command": "Convert 2026-11-13T09:30 from Europe/London to America/New_York", "keywords": "convert timezone time zone"},
@@ -583,6 +660,11 @@ FEATURE_CATALOG = [
     {"id": "bookmarks", "category": "Personal library", "title": "Bookmarks", "description": "Save and search useful websites.", "command": "Save bookmark: Python Docs | https://docs.python.org | python,reference", "keywords": "bookmark save website link"},
     {"id": "snippets", "category": "Personal library", "title": "Text snippets", "description": "Store reusable text and retrieve it by name.", "command": "Save snippet greeting: Hello! How can I help you today?", "keywords": "snippet template reusable text"},
     {"id": "system_health", "category": "System", "title": "System health", "description": "Inspect available disk and memory capacity.", "command": "Show system health", "keywords": "system health memory disk storage status"},
+    {"id": "csv_insights", "category": "Text & data", "title": "CSV insights", "description": "Summarise rows, columns, empty cells and duplicates.", "command": "Analyse CSV: name,value\nAlex,10\nSam,12", "keywords": "csv analyse spreadsheet rows columns duplicates"},
+    {"id": "markdown_table", "category": "Developer tools", "title": "Markdown table", "description": "Turn CSV rows into a clean Markdown table.", "command": "Markdown table: Name,Score\nAlex,10\nSam,12", "keywords": "markdown table csv format"},
+    {"id": "colour_converter", "category": "Developer tools", "title": "Colour converter", "description": "Convert HEX and RGB colours to HEX, RGB and HSL.", "command": "Convert colour #38E0D0", "keywords": "colour color hex rgb hsl"},
+    {"id": "text_diff", "category": "Text & data", "title": "Text comparison", "description": "Show line-by-line differences between two text snippets.", "command": "Compare text: original\n--- revised ---\nupdated", "keywords": "compare diff text changes"},
+    {"id": "number_base", "category": "Developer tools", "title": "Number base converter", "description": "Convert integers between bases 2–36.", "command": "Convert base 1010 from 2 to 10", "keywords": "binary decimal hexadecimal base converter"},
 ]
 
 
@@ -609,6 +691,32 @@ def dispatch_command(command: str) -> str | None:
     low = text.casefold().strip()
     if not low:
         return None
+
+    m = re.fullmatch(r"analyse csv\s*:\s*(.*)", text, re.I | re.S)
+    if m:
+        result = csv_insights(m.group(1))
+        empty = result["rows"] * result["columns"] - result["non_empty_cells"]
+        return f"CSV contains {result['rows']} data rows and {result['columns']} columns. Headers: {', '.join(result['headers'])}. Empty cells: {empty}. Duplicate rows: {result['duplicate_rows']}."
+
+    m = re.fullmatch(r"markdown table\s*:\s*(.*)", text, re.I | re.S)
+    if m:
+        import csv, io
+        parsed = list(csv.reader(io.StringIO(m.group(1))))
+        if len(parsed) < 2: raise ValueError("Provide a header row and at least one data row.")
+        return markdown_table(parsed[0], parsed[1:])
+
+    m = re.fullmatch(r"(?:convert )?colou?r\s+(?:convert\s+)?(#[0-9a-fA-F]{3,6}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))[.!?]?", text, re.I)
+    if m:
+        result = convert_colour(m.group(1))
+        return f"{result['hex']} · {result['rgb']} · {result['hsl']}"
+
+    m = re.fullmatch(r"compare text\s*:\s*(.*?)\n---\s*revised\s*---\s*\n(.*)", text, re.I | re.S)
+    if m: return compare_texts(m.group(1), m.group(2))
+
+    m = re.fullmatch(r"convert base\s+([+-]?[0-9a-z]+)\s+from\s+(\d{1,2})\s+to\s+(\d{1,2})[.!?]?", text, re.I)
+    if m:
+        result = convert_number_base(m.group(1), int(m.group(2)), int(m.group(3)))
+        return f"{m.group(1)} (base {m.group(2)}) = {result['result']} (base {m.group(3)})."
 
     m = re.fullmatch(r"(?:what time is it|time) in ([a-z_+-]+(?:/[a-z0-9_+.-]+)+)[.!?]?", text, re.I)
     if m:
