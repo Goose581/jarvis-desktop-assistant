@@ -846,7 +846,7 @@ def get_current_time(now: _datetime.datetime | None = None, **kwargs: Any) -> st
 def is_time_request(user_input: str) -> bool:
     """Route common time, date and weekday questions to the local system clock."""
     text = re.sub(r"[!?.,]+$", "", str(user_input).strip().casefold())
-    text = re.sub(r"\\s+", " ", text)
+    text = re.sub(r"\s+", " ", text)
     patterns = (
         r"^(?:please )?what(?:'s| is) the (?:current )?time$",
         r"^(?:(?:please )?(?:can|could|would) you )?tell me the (?:current )?time$",
