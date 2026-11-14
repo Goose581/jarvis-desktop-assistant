@@ -201,8 +201,8 @@ def find_asset(release: dict, name: str) -> str:
 def check_for_update(app_dir: Path, repo: str) -> dict | None:
     """Return validated release metadata when a newer installable release exists.
 
-    This function never downloads anything. The user is always asked before
-    the update ZIP and checksum are fetched.
+    This function never downloads anything. The startup policy decides whether
+    to install automatically or ask before downloading.
     """
     release = latest_release(repo)
     new_version = str(release.get("tag_name", "")).strip().lstrip("vV")
@@ -234,6 +234,11 @@ def check_for_update(app_dir: Path, repo: str) -> dict | None:
         "zip_url": zip_url,
         "checksum_url": checksum_url,
     }
+
+
+def auto_install_enabled(config: dict) -> bool:
+    """Return True only when automatic installation is explicitly enabled."""
+    return isinstance(config, dict) and config.get("auto_install") is True
 
 
 def download_available_update(update: dict) -> Path:
@@ -706,8 +711,12 @@ def main() -> int:
         repo = str(config.get("github_repo", "")).strip()
         update = check_for_update(app_dir, repo)
         if update is not None:
-            log(f"Showing startup update prompt for v{update['version']}.")
-            if prompt_for_update(current_version(app_dir), update):
+            automatic = auto_install_enabled(config)
+            if automatic:
+                log(f"Automatically installing verified update v{update['version']} on startup.")
+            else:
+                log(f"Showing startup update prompt for v{update['version']}.")
+            if automatic or prompt_for_update(current_version(app_dir), update):
                 zip_path = show_download_progress(update)
                 if getattr(sys, "frozen", False):
                     helper_command = [sys.executable, "--apply-update", str(zip_path), str(app_dir), str(os.getpid())]
