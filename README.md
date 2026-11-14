@@ -10,6 +10,7 @@
 - Added a generated blue/turquoise J.A.R.V.I.S. icon for the desktop executable, application window, installer, Start Menu and desktop shortcuts.
 - Added 300 new focused tests: 50 clock/date cases and 50 cases for each of the five new tools, plus validation and integration checks.
 - Updated app, launcher, installer, build and release metadata to v1.7.0.
+- To publish this release, set the GitHub tag and title to `v1.7.0` and attach the Windows update ZIP, checksum and setup executable after a successful Windows build.
 ## v1.6.4 — Automatic Ollama startup and connection recovery
 
 J.A.R.V.I.S. checks the local Ollama API during startup. If the API is unavailable and `OLLAMA_HOST` is local/default, it locates the installed `ollama.exe`, starts `ollama.exe serve` invisibly in the background, and retries for up to 12 seconds. The same readiness check runs before chat and model-manager operations so Ollama can recover if it is closed while J.A.R.V.I.S. remains open. Remote `OLLAMA_HOST` configurations are not overridden. See `OLLAMA_AUTOSTART.md` for diagnostics.
