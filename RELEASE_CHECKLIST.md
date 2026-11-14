@@ -1,3 +1,15 @@
+# v1.7.0 release checklist
+
+- [ ] Confirm GitHub Actions passes on Python 3.13 and 3.14 / Windows.
+- [ ] Run `build_release.bat` on Windows 10/11 x64 and confirm the icon generator creates `assets\\jarvis.ico` and `assets\\jarvis.png`.
+- [ ] Confirm the app executable, app window, installer, Start Menu shortcut and desktop shortcut display the blue/turquoise J.A.R.V.I.S. icon.
+- [ ] Ask J.A.R.V.I.S. for the current time, today's date and weekday; compare all three with the Windows clock/calendar.
+- [ ] Test the five new Workspace tools: CSV insights, Markdown table, colour conversion, text comparison and number-base conversion.
+- [ ] Confirm all 30 Workspace examples launch locally without sending those commands to Ollama.
+- [ ] Install over v1.6.4 and confirm existing Ollama models, settings, notes and user data remain intact.
+- [ ] Verify the update ZIP and SHA-256 checksum, then test the prompted updater from v1.6.4.
+- [ ] Publish tag `v1.7.0` only after the Windows installer and update package have been tested.
+
 # v1.6.4 Ollama automatic startup checks
 
 - [ ] Commit and push v1.6.4 source.
