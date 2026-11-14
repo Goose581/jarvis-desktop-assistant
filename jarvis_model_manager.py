@@ -33,13 +33,14 @@ def validate_model_tag(model: str) -> str:
 
 
 def _active_host() -> str:
-    # This health check also pins J.A.R.V.I.S.'s preferred loopback endpoint.
-    assistant.get_installed_ollama_models(timeout=4.0)
+    # Ensure the local server is available before model-manager operations.
+    assistant.ensure_ollama_available(timeout=12.0)
     return assistant._ollama_api_base()
 
 
 def list_models() -> list[dict[str, Any]]:
     """Return installed models with safe display metadata."""
+    _active_host()
     payload, _host = assistant._fetch_ollama_json("/api/tags", timeout=4.0)
     raw_models = payload.get("models", [])
     if not isinstance(raw_models, list):

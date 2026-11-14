@@ -30,7 +30,7 @@ from pathlib import Path
 APP_EXE_NAME = "JARVIS.exe"
 RELEASE_ZIP_NAME = "JARVIS-Windows.zip"
 CHECKSUM_NAME = RELEASE_ZIP_NAME + ".sha256"
-USER_AGENT = "JARVIS-Windows-Updater/1.6.3"
+USER_AGENT = "JARVIS-Windows-Updater/1.6.4"
 MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 MAX_ARCHIVE_FILES = 20000
 MAX_EXTRACTED_BYTES = 500 * 1024 * 1024
@@ -209,7 +209,7 @@ def check_for_update(app_dir: Path, repo: str) -> dict | None:
     old_version = current_version(app_dir)
 
     if not re.fullmatch(r"\d+(?:\.\d+){0,3}", new_version):
-        raise ValueError("The latest GitHub release tag must be a numeric version such as v1.6.3.")
+        raise ValueError("The latest GitHub release tag must be a numeric version such as v1.6.4.")
     if version_tuple(new_version) <= version_tuple(old_version):
         log(f"No update available. Installed={old_version}, latest={new_version}")
         return None

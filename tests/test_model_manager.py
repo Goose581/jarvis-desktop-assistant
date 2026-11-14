@@ -98,7 +98,8 @@ class ModelDisplayTests(unittest.TestCase):
             {"name": "zeta:latest", "size": 2048, "details": {"parameter_size": "3B", "quantization_level": "Q4_K_M", "family": "llama"}},
             {"model": "alpha:latest", "size": 1024, "details": {"parameter_size": "2B", "quantization_level": "Q8_0", "family": "gemma"}},
         ]}
-        with patch.object(manager.assistant, "_fetch_ollama_json", return_value=(payload, "http://127.0.0.1:11434")):
+        with patch.object(manager.assistant, "ensure_ollama_available", return_value=["zeta:latest"]), \
+             patch.object(manager.assistant, "_fetch_ollama_json", return_value=(payload, "http://127.0.0.1:11434")):
             rows = manager.list_models()
         self.assertEqual([row["name"] for row in rows], ["alpha:latest", "zeta:latest"])
         self.assertEqual(rows[1]["parameter_size"], "3B")
@@ -106,13 +107,15 @@ class ModelDisplayTests(unittest.TestCase):
 
     def test_list_models_skips_malformed_rows(self):
         payload = {"models": [None, {}, {"name": 7}, {"name": "valid:model", "details": "bad"}]}
-        with patch.object(manager.assistant, "_fetch_ollama_json", return_value=(payload, "http://127.0.0.1:11434")):
+        with patch.object(manager.assistant, "ensure_ollama_available", return_value=["zeta:latest"]), \
+             patch.object(manager.assistant, "_fetch_ollama_json", return_value=(payload, "http://127.0.0.1:11434")):
             rows = manager.list_models()
         self.assertEqual([row["name"] for row in rows], ["valid:model"])
         self.assertEqual(rows[0]["parameter_size"], "")
 
     def test_list_models_rejects_non_list_payload(self):
-        with patch.object(manager.assistant, "_fetch_ollama_json", return_value=({"models": {}}, "http://127.0.0.1:11434")):
+        with patch.object(manager.assistant, "ensure_ollama_available", return_value=[]), \
+             patch.object(manager.assistant, "_fetch_ollama_json", return_value=({"models": {}}, "http://127.0.0.1:11434")):
             with self.assertRaises(ValueError):
                 manager.list_models()
 
@@ -122,6 +125,9 @@ class ModelPullTests(unittest.TestCase):
         self.host_patch = patch.object(manager.assistant, "_ollama_api_base", return_value="http://127.0.0.1:11434")
         self.host_patch.start()
         self.addCleanup(self.host_patch.stop)
+        self.ready_patch = patch.object(manager.assistant, "ensure_ollama_available", return_value=["gemma4:e2b"])
+        self.ready_patch.start()
+        self.addCleanup(self.ready_patch.stop)
 
     def test_pull_sends_model_and_stream_flag(self):
         response = FakeResponse([json.dumps({"status": "success"}).encode() + b"\n"])
@@ -198,6 +204,7 @@ class ModelDeleteTests(unittest.TestCase):
     def test_delete_uses_delete_method_and_model_field(self):
         response = FakeResponse(status=200)
         with patch.object(manager.assistant, "_ollama_api_base", return_value="http://127.0.0.1:11434"), \
+             patch.object(manager.assistant, "ensure_ollama_available", return_value=["old:model"]), \
              patch.object(manager.assistant, "_ollama_urlopen", return_value=response) as open_url:
             self.assertEqual(manager.delete_model("old:model"), "old:model")
         request = open_url.call_args.args[0]

@@ -1,3 +1,13 @@
+## v1.6.4 — Automatic Ollama startup and connection recovery
+
+- Automatically checks the local Ollama API during application startup.
+- Locates installed `ollama.exe` through PATH and standard Windows install locations.
+- Starts `ollama.exe serve` silently when the local API is offline.
+- Retries API readiness for up to 12 seconds without blocking the GUI.
+- Rechecks and recovers Ollama before chat and model-manager actions.
+- Respects remote `OLLAMA_HOST` values and never starts a local daemon for remote configurations.
+- Writes diagnostic server output to `%LOCALAPPDATA%\JARVIS\ollama-server.log` when possible.
+
 ## v1.6.3 — Spotify controls and Spotify-only volume
 
 - Added direct Spotify-only volume control using Windows Core Audio audio sessions via Pycaw.
@@ -8,6 +18,3 @@
 - Kept Spotify opening, search, play/pause, next and previous controls.
 - Added tests for audio-session filtering, COM lifecycle, percentage validation/clamping, slider wiring, command routing, tool schema and packaging.
 - Documented that a Spotify audio session may not appear until playback starts.
-
-### v1.6.3 build-test correction
-- Fixed a platform-dependent Spotify APPDATA discovery test that compared Windows paths with POSIX forward slashes. The implementation already included the correct `%APPDATA%\\Spotify\\Spotify.exe` candidate; the test now compares `Path` objects.

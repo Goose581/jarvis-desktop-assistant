@@ -1,3 +1,9 @@
+## v1.6.4 — Automatic Ollama startup and connection recovery
+
+J.A.R.V.I.S. checks the local Ollama API during startup. If the API is unavailable and `OLLAMA_HOST` is local/default, it locates the installed `ollama.exe`, starts `ollama.exe serve` invisibly in the background, and retries for up to 12 seconds. The same readiness check runs before chat and model-manager operations so Ollama can recover if it is closed while J.A.R.V.I.S. remains open. Remote `OLLAMA_HOST` configurations are not overridden. See `OLLAMA_AUTOSTART.md` for diagnostics.
+
+For this project release, set the GitHub tag and title to `v1.6.4`. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for prompted updates, plus `output\JARVIS-Setup.exe` for first-time installations.
+
 ## v1.6.3 — Spotify controls and Spotify-only volume
 
 J.A.R.V.I.S. includes a Spotify Controls panel and natural-language commands for opening Spotify, play/pause, next/previous, searching, reading Spotify's app-session volume, setting a percentage, nudging volume up/down, and muting/unmuting Spotify. The volume slider and commands target Spotify's own Windows Core Audio session through Pycaw's `SimpleAudioVolume` interface. They do **not** change Windows master volume or the volume of other applications. If Spotify has not started playback yet, Windows may not have created its audio session; start a track and refresh the panel.
@@ -156,7 +162,7 @@ The tools are grouped into Time & dates, Calculators, Text & data, Developer too
 
 ## GitHub Releases and updates
 
-For the current project, use tag and title `v1.6.3`. Build and test on Windows before publishing. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for the prompted updater, plus `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
+For the current project, use tag and title `v1.6.4`. Build and test on Windows before publishing. Attach `dist\JARVIS-Windows.zip` and `dist\JARVIS-Windows.zip.sha256` for the prompted updater, plus `output\JARVIS-Setup.exe` for first-time installs. The repository must be public for the current unauthenticated updater design.
 
 ## Safety and notes
 

@@ -824,6 +824,7 @@ class OllamaConfigurationTests(unittest.TestCase):
         history = [{"role": "system", "content": "test"}]
         with patch.dict("sys.modules", {"ollama": fake_ollama}), \
              patch.object(jarvis, "_OLLAMA_ACTIVE_HOST", "http://localhost:11434"), \
+             patch.object(jarvis, "ensure_ollama_available", return_value=["gemma4:e2b"]), \
              patch.object(jarvis, "MODEL_NAME", "gemma4:e2b"), \
              patch.object(jarvis, "NUM_CTX", 8192), \
              patch.object(jarvis, "get_preferred_think_mode", return_value=False), \
@@ -878,6 +879,7 @@ class OllamaToolSchemaTests(unittest.TestCase):
         history = [{"role": "system", "content": "test"}]
         with patch.dict("sys.modules", {"ollama": fake_ollama}), \
              patch.object(jarvis, "_OLLAMA_ACTIVE_HOST", "http://localhost:11434"), \
+             patch.object(jarvis, "ensure_ollama_available", return_value=["gemma4:e2b"]), \
              patch.object(jarvis, "MODEL_NAME", "gemma4:e2b"), \
              patch.object(jarvis, "get_preferred_think_mode", return_value=False), \
              patch("JARVIS.speak"):

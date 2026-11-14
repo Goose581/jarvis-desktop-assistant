@@ -1400,7 +1400,7 @@ class JarvisApp:
 
             def worker() -> None:
                 try:
-                    models = assistant.get_installed_ollama_models(timeout=3.0)
+                    models = assistant.ensure_ollama_available(timeout=12.0)
                     error_text = ""
                 except Exception as error:
                     models = []

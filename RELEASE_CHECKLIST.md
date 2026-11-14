@@ -1,3 +1,17 @@
+# v1.6.4 Ollama automatic startup checks
+
+- [ ] Commit and push v1.6.4 source.
+- [ ] Confirm GitHub Actions passes on Windows.
+- [ ] Build the installer and update ZIP on Windows.
+- [ ] Close Ollama from the system tray so the local API is stopped.
+- [ ] Launch J.A.R.V.I.S. using its normal desktop shortcut.
+- [ ] Confirm J.A.R.V.I.S. starts `ollama.exe serve` and reaches the local API.
+- [ ] Confirm the selected model is reported ready and a chat request succeeds.
+- [ ] Stop Ollama while J.A.R.V.I.S. remains open; send another request and confirm it recovers.
+- [ ] Confirm remote `OLLAMA_HOST` is not changed or replaced.
+- [ ] If startup fails, inspect `%LOCALAPPDATA%\JARVIS\ollama-server.log` and `jarvis.log`.
+- [ ] Test the user-approved update from v1.6.3, then publish tag `v1.6.4` with installer, update ZIP and checksum.
+
 # v1.6.3 release checklist — Spotify-only volume
 
 - [ ] Confirm Python syntax and the full automated suite pass.

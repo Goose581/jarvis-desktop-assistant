@@ -21,6 +21,7 @@ import queue
 import re
 import subprocess
 import sys
+import shutil
 import threading
 import time
 import traceback
@@ -36,7 +37,7 @@ import jarvis_spotify as spotify
 spotify_control = spotify.spotify_control
 
 APP_NAME = "J.A.R.V.I.S."
-APP_VERSION = "1.6.3"
+APP_VERSION = "1.6.4"
 # Recommended lightweight model for J.A.R.V.I.S. on the user's 16 GB DDR3 PC.
 DEFAULT_MODEL = "gemma4:e2b"
 LEGACY_DEFAULT_MODELS = {"llama3.2:1b"}
@@ -46,6 +47,8 @@ SUPPORTED_CONTEXT_SIZES = (2048, 4096, 8192, 12288, 16384)
 SUPPORTED_THEMES = ("midnight", "arctic", "emerald", "violet", "crimson", "amber")
 MODEL_SUGGESTIONS = ("gemma4:e2b", "gemma4:e4b", "gemma4:12b", "llama3.2:1b", "llama3.2:3b", "qwen2.5:3b")
 _OLLAMA_HOST_LOCK = threading.RLock()
+_OLLAMA_AUTOSTART_LOCK = threading.Lock()
+_OLLAMA_SERVER_PROCESS: subprocess.Popen | None = None
 _OLLAMA_ACTIVE_HOST: str | None = None
 OLLAMA_KEEP_ALIVE = "30m"
 _OLLAMA_THINK_CACHE: dict[str, tuple[float, bool | str | None]] = {}
@@ -1155,6 +1158,176 @@ def _ollama_api_candidates() -> list[str]:
     return list(dict.fromkeys(candidates))
 
 
+def _ollama_target_is_local() -> bool:
+    """Return True when OLLAMA_HOST points at this computer.
+
+    J.A.R.V.I.S. may start the local Ollama server automatically, but it must
+    never start a second local daemon when the user configured a remote host.
+    """
+    configured = os.environ.get("OLLAMA_HOST", "").strip()
+    if not configured:
+        return True
+    try:
+        hostname = urllib.parse.urlsplit(_normalise_ollama_host(configured)).hostname or ""
+    except ValueError:
+        return False
+    if hostname.casefold() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def find_ollama_executable() -> Path | None:
+    """Find the installed Ollama CLI on Windows without relying only on PATH."""
+    candidates: list[Path] = []
+    for command in ("ollama.exe", "ollama"):
+        located = shutil.which(command)
+        if located:
+            candidates.append(Path(located))
+
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files").strip()
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)").strip()
+    if local_app_data:
+        candidates.append(Path(local_app_data) / "Programs" / "Ollama" / "ollama.exe")
+    if program_files:
+        candidates.append(Path(program_files) / "Ollama" / "ollama.exe")
+    if program_files_x86:
+        candidates.append(Path(program_files_x86) / "Ollama" / "ollama.exe")
+
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = os.path.normcase(str(candidate))
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if candidate.is_file():
+                return candidate.resolve()
+        except OSError:
+            continue
+    return None
+
+
+def _start_ollama_server() -> bool:
+    """Start `ollama serve` invisibly if it is installed and not already started.
+
+    Returns True if this call launched the server, False if a launch is already
+    being managed by this J.A.R.V.I.S. process. The Ollama process deliberately
+    outlives the GUI so it remains available to other local applications.
+    """
+    global _OLLAMA_SERVER_PROCESS
+    if not _ollama_target_is_local():
+        raise RuntimeError("Automatic startup is disabled for a remote OLLAMA_HOST.")
+
+    with _OLLAMA_AUTOSTART_LOCK:
+        if _OLLAMA_SERVER_PROCESS is not None:
+            try:
+                if _OLLAMA_SERVER_PROCESS.poll() is None:
+                    return False
+            except Exception:
+                _OLLAMA_SERVER_PROCESS = None
+
+        executable = find_ollama_executable()
+        if executable is None:
+            raise FileNotFoundError(
+                "Ollama is not responding and ollama.exe could not be found. "
+                "Install Ollama or open it from the Windows Start menu."
+            )
+
+        creation_flags = 0
+        if sys.platform == "win32":
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            creation_flags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+        try:
+            server_log = user_data_dir() / "ollama-server.log"
+            log_handle = server_log.open("ab")
+        except OSError:
+            log_handle = subprocess.DEVNULL
+
+        try:
+            _OLLAMA_SERVER_PROCESS = subprocess.Popen(
+                [str(executable), "serve"],
+                cwd=str(executable.parent),
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT if log_handle is not subprocess.DEVNULL else subprocess.DEVNULL,
+                creationflags=creation_flags,
+                close_fds=True,
+            )
+        except Exception as error:
+            log_error("Could not start the Ollama server process.", error)
+            raise RuntimeError(f"Could not start Ollama using {executable}: {error}") from error
+        finally:
+            if log_handle is not subprocess.DEVNULL:
+                try:
+                    log_handle.close()
+                except Exception:
+                    pass
+
+        log_error(f"Started Ollama server process from {executable} (PID {_OLLAMA_SERVER_PROCESS.pid}).")
+        return True
+
+
+def ensure_ollama_available(
+    timeout: float = 12.0,
+    poll_interval: float = 0.4,
+) -> list[str]:
+    """Return installed models, starting local Ollama and waiting if necessary.
+
+    This function runs from background workers during GUI startup and model
+    operations. It probes first, starts the local CLI only for loopback hosts,
+    then retries until the API responds or the bounded timeout expires.
+    """
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+        raise ValueError("The Ollama startup timeout must be positive.")
+    if isinstance(poll_interval, bool) or not isinstance(poll_interval, (int, float)) or poll_interval <= 0:
+        raise ValueError("The Ollama polling interval must be positive.")
+
+    initial_error: Exception | None = None
+    try:
+        return get_installed_ollama_models(timeout=min(0.6, float(timeout)))
+    except ConnectionError as error:
+        initial_error = error
+
+    if not _ollama_target_is_local():
+        raise ConnectionError(
+            "The configured remote Ollama server is unavailable. "
+            "J.A.R.V.I.S. did not start a local server because OLLAMA_HOST points elsewhere."
+        ) from initial_error
+
+    try:
+        _start_ollama_server()
+    except Exception as error:
+        log_error("Automatic Ollama startup could not be initiated.", error)
+        raise ConnectionError(
+            f"Ollama is offline and could not be started automatically: {error}"
+        ) from initial_error
+
+    deadline = time.monotonic() + float(timeout)
+    last_error: Exception = initial_error
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            models = get_installed_ollama_models(timeout=min(0.6, max(0.2, remaining)))
+            log_error("Ollama API became available after automatic startup.")
+            return models
+        except Exception as error:
+            last_error = error
+        time.sleep(min(float(poll_interval), max(0.0, deadline - time.monotonic())))
+
+    log_error("Ollama did not become available before the startup timeout.", last_error)
+    raise ConnectionError(
+        f"Ollama did not become available within {timeout:.0f} seconds after startup. "
+        f"Last connection error: {last_error}. See ollama-server.log and jarvis.log."
+    ) from last_error
+
+
 def _ollama_urlopen(request: urllib.request.Request, timeout: float, base: str):
     """Avoid workstation HTTP proxies for loopback Ollama traffic."""
     hostname = urllib.parse.urlsplit(base).hostname or ""
@@ -1218,14 +1391,11 @@ def create_ollama_client():
     """
     import ollama
 
+    # Recheck readiness here as well as at GUI startup. Ollama may have been
+    # closed after the status indicator turned green; recover before chat.
+    ensure_ollama_available(timeout=12.0)
     with _OLLAMA_HOST_LOCK:
         active_host = _OLLAMA_ACTIVE_HOST
-    if not active_host:
-        # Resolve the host before creating the SDK client. This also ensures
-        # the initial chat uses the same loopback address as the status check.
-        get_installed_ollama_models(timeout=3.0)
-        with _OLLAMA_HOST_LOCK:
-            active_host = _OLLAMA_ACTIVE_HOST
     host = active_host or _ollama_api_base()
     return ollama.Client(host=host, trust_env=False)
 
@@ -1346,7 +1516,7 @@ def _request_may_need_tools(user_input: str) -> bool:
 def check_ollama_status() -> tuple[bool, str]:
     """Check the Ollama API and configured model using resilient local endpoints."""
     try:
-        installed = get_installed_ollama_models(timeout=3.0)
+        installed = ensure_ollama_available(timeout=12.0)
         host = _ollama_api_base()
         installed_lookup = {name.casefold() for name in installed}
         configured = MODEL_NAME.casefold()

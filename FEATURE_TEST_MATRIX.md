@@ -42,3 +42,8 @@ Automated tests cover media-key mapping and key-up/key-down events, installed-ap
 Automated tests cover: Windows/unsupported-platform gating; COM initialize/uninitialize; session discovery across devices; Spotify.exe-only filtering; no-session behaviour; numeric parsing and bounds; set/get/adjust; upper/lower clamping; mute/unmute; error messages; natural-language routing; tool schema arguments; GUI slider wiring; dependency and PyInstaller bundling.
 
 The full Windows integration check must still confirm that Spotify playback creates a session, the Spotify slider changes only that session, and the system master volume plus other apps remain unchanged.
+
+
+## v1.6.4 system integration — Ollama automatic startup
+
+Covered by `tests/test_ollama_autostart.py` (11 tests): API available, offline recovery, remote host protection, executable-not-found handling, standard per-user executable discovery, hidden server launch, duplicate-start prevention, status integration, chat integration, and timeout validation.

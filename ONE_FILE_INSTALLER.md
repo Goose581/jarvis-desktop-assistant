@@ -2,6 +2,10 @@
 
 The desktop app includes local Spotify controls: open Spotify, play/pause, next/previous track, and search. Search opens Spotify results rather than automatically selecting a specific track. Playback commands use Windows multimedia keys, which Windows routes to its active media session; another active media player can receive the command. No Spotify API credentials are required for these desktop controls.
 
+## Automatic Ollama startup (v1.6.4)
+
+At application startup, J.A.R.V.I.S. probes the configured Ollama API. If a local API is unavailable, the app locates the already-installed `ollama.exe`, starts `ollama.exe serve` without a console window, and retries the API for up to 12 seconds. This also runs before chat and model-manager operations to recover if Ollama is stopped while J.A.R.V.I.S. is open. It does not start a local process for a remote `OLLAMA_HOST`. See `OLLAMA_AUTOSTART.md` for details.
+
 # J.A.R.V.I.S. one-file Windows installer
 
 ## What the end user downloads

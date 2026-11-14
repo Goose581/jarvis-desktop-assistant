@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 REM Keep this version in sync with APP_VERSION in JARVIS.py.
-set "APP_VERSION=1.6.3"
+set "APP_VERSION=1.6.4"
 set "PYTHON=.venv\Scripts\python.exe"
 set "BUILD_LOG=%~dp0build.log"
 set "BUILD_STAGE=initial checks"
