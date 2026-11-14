@@ -477,3 +477,94 @@ class WorkspaceIntegrationTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         self.assertIn("tzdata", (root / "requirements-build.txt").read_text(encoding="utf-8"))
         self.assertIn("--collect-all tzdata", (root / "build_release.bat").read_text(encoding="utf-8"))
+
+
+# v1.7.0 adds 300 focused tests: 50 clock/date cases and 50 per new feature.
+import JARVIS as jarvis
+from datetime import timezone as _tz
+from datetime import datetime as _dt
+
+def _clock_case(i):
+    def run():
+        moment = _dt(2026, 1 + (i % 12), 1 + (i % 27), i % 24, (i * 7) % 60, (i * 11) % 60, tzinfo=_tz.utc)
+        output = jarvis.get_current_time(moment)
+        assert moment.strftime("%A") in output
+        assert moment.strftime("%B %d, %Y") in output
+        assert moment.strftime("%I:%M:%S %p") in output
+    return run
+WorkspaceCurrentClockTests = _add_case_tests("WorkspaceCurrentClockTests", _clock_case)
+
+def _csv_case(i):
+    def run():
+        result = ws.csv_insights("\n".join(["name,value", f"item{i},{i}", f"item{i+1},{i+1}"]))
+        assert result["rows"] == 2 and result["columns"] == 2
+        assert result["headers"] == ["name", "value"]
+        assert result["duplicate_rows"] == 0
+    return run
+WorkspaceCsvInsightsTests = _add_case_tests("WorkspaceCsvInsightsTests", _csv_case)
+
+def _markdown_case(i):
+    def run():
+        result = ws.markdown_table(["Name", "Value"], [[f"row{i}", str(i)]])
+        assert result.splitlines()[0] == "| Name | Value |"
+        assert f"| row{i} | {i} |" in result
+    return run
+WorkspaceMarkdownTableTests = _add_case_tests("WorkspaceMarkdownTableTests", _markdown_case)
+
+def _colour_case(i):
+    def run():
+        red, green, blue = (i * 17) % 256, (i * 31) % 256, (i * 47) % 256
+        hex_value = f"#{red:02X}{green:02X}{blue:02X}"
+        result = ws.convert_colour(hex_value)
+        assert result["hex"] == hex_value
+        assert result["rgb"] == f"rgb({red}, {green}, {blue})"
+        assert result["hsl"].startswith("hsl(")
+    return run
+WorkspaceColourTests = _add_case_tests("WorkspaceColourTests", _colour_case)
+
+def _diff_case(i):
+    def run():
+        result = ws.compare_texts(f"before {i}\nkeep", f"after {i}\nkeep")
+        assert f"-before {i}" in result and f"+after {i}" in result
+        assert "keep" in result
+    return run
+WorkspaceTextDiffTests = _add_case_tests("WorkspaceTextDiffTests", _diff_case)
+
+def _base_case(i):
+    def run():
+        value = i * 7919 - 100_000
+        encoded = ws.convert_number_base(str(value), 10, 16)
+        decoded = ws.convert_number_base(encoded["hex"], 16, 10)
+        assert decoded["result"] == str(value)
+        assert encoded["decimal"] == str(value)
+        assert encoded["binary"] == format(value, "b")
+    return run
+WorkspaceNumberBaseTests = _add_case_tests("WorkspaceNumberBaseTests", _base_case)
+
+class V170ValidationTests(unittest.TestCase):
+    def test_csv_rejects_malformed_rows(self):
+        with self.assertRaises(ValueError): ws.csv_insights("a,b\n1")
+    def test_markdown_escapes_pipes(self):
+        self.assertIn(r"a\|b", ws.markdown_table(["name"], [["a|b"]]))
+    def test_colour_rejects_out_of_range_rgb(self):
+        with self.assertRaises(ValueError): ws.convert_colour("rgb(256,0,0)")
+    def test_diff_reports_identical_text(self):
+        self.assertEqual(ws.compare_texts("same", "same"), "No differences found.")
+    def test_base_rejects_invalid_digits(self):
+        with self.assertRaises(ValueError): ws.convert_number_base("102", 2, 10)
+    def test_feature_catalog_has_30_unique_entries(self):
+        ids = [item["id"] for item in ws.FEATURE_CATALOG]
+        self.assertEqual(len(ids), 30)
+        self.assertEqual(len(set(ids)), 30)
+    def test_five_new_commands_route_deterministically(self):
+        self.assertIn("2 data rows", ws.dispatch_command("Analyse CSV: name,value\nA,1\nB,2"))
+        self.assertIn("| Name | Score |", ws.dispatch_command("Markdown table: Name,Score\nAlex,10"))
+        self.assertIn("#38E0D0", ws.dispatch_command("Convert colour #38E0D0"))
+        self.assertIn("+new", ws.dispatch_command("Compare text: old\n--- revised ---\nnew"))
+        self.assertIn("1010", ws.dispatch_command("Convert base 10 from 10 to 2"))
+    def test_time_parser_recognises_weekday_and_date(self):
+        for phrase in ("What day is it?", "What day of the week is it?", "What's today's date?", "What is the time and date?"):
+            self.assertTrue(jarvis.is_time_request(phrase), phrase)
+    def test_time_parser_ignores_unrelated_questions(self):
+        for phrase in ("What is 12 + 2?", "What day was it 5 years ago?", "What time is the film?"):
+            self.assertFalse(jarvis.is_time_request(phrase), phrase)
