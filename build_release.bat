@@ -83,7 +83,7 @@ if exist JARVIS-Launcher.spec del /q JARVIS-Launcher.spec
 echo.
 echo [5/6] Building the J.A.R.V.I.S. desktop application...
 set "BUILD_STAGE=desktop application packaging"
-call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --icon assets\jarvis.ico --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all pycaw --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import winsound --hidden-import pyttsx3.drivers.sapi5 --add-data "assets\jarvis_timer_alarm.wav;assets" --add-data "assets\jarvis.png;assets" JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
+call "%PYTHON%" -m PyInstaller --noconfirm --clean --onedir --windowed --name JARVIS --icon assets\jarvis.ico --runtime-hook pyi_rth_stdio.py --collect-all pyttsx3 --collect-all comtypes --collect-all pycaw --collect-all ollama --collect-all pyautogui --collect-all pyperclip --collect-all tzdata --hidden-import winsound --hidden-import pyttsx3.drivers.sapi5 --add-data "assets\jarvis_timer_alarm.wav;assets" --add-data "assets\jarvis.png;assets" --add-data "assets\jarvis.ico;assets" JARVIS_GUI.py >>"%BUILD_LOG%" 2>&1
 if errorlevel 1 goto :failed
 
 if not exist "dist\JARVIS\JARVIS.exe" (
